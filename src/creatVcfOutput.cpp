@@ -40,28 +40,24 @@ void TandemTwister::createVcfHeader(){
     bcf_hdr_append(this->vcf_header, "##INFO=<ID=UNIT_LENGTH_AVG,Number=1,Type=String,Description=\"Average Length of the repeat unit\">");
     
     if (this->analysis_type == "somatic" || this->analysis_type == "germline"){
-        if (this->somatic == false ){
-            bcf_hdr_append(this->vcf_header, "##INFO=<ID=CN_H1,Number=1,Type=String,Description=\"Number of repeats for each haplotpye\">");
-            bcf_hdr_append(this->vcf_header, "##INFO=<ID=CN_H2,Number=1,Type=String,Description=\"Number of repeats for each haplotpye\">");
-            bcf_hdr_append(this->vcf_header, "##INFO=<ID=MOTIF_IDs_H1,Number=1,Type=String,Description=\"Motif ids for each haplotype\">");
-            bcf_hdr_append(this->vcf_header, "##INFO=<ID=MOTIF_IDs_H2,Number=1,Type=String,Description=\"Motif ids for each haplotype\">");
-        }
-        else {
-            bcf_hdr_append(this->vcf_header, "##INFO=<ID=CN_alleles,Number=1,Type=String,Description=\"list of copy number of repeats for each haplotpye\">");
-            bcf_hdr_append(this->vcf_header, "##INFO=<ID=MOTIF_IDs_alleles,Number=1,Type=String,Description=\"Motif ids for each haplotype\">");
-        }
+        // if (this->somatic == false ){
+        bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=CN,Number=1,Type=Integer,Description=\"Number of repeats for each haplotype\">");
+        bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=MI,Number=1,Type=String,Description=\"Motif ids for each haplotype\">");
+        // }
+        // else {
+        //     bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=CN_alleles,Number=1,Type=String,Description=\"list of copy number of repeats for each haplotpye\">");
+        //     bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=MOTIF_IDs_alleles,Number=1,Type=String,Description=\"Motif ids for each haplotype\">");
+        // }
         bcf_hdr_append(this->vcf_header, "##INFO=<ID=CN_ref,Number=1,Type=String,Description=\"Number of repeats for each haplotpye\">");
         bcf_hdr_append(this->vcf_header, "##INFO=<ID=MOTIF_IDs_REF,Number=1,Type=String,Description=\"Motif ids for each haplotype\">");
-
         bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=DP,Number=1,Type=String,Description=\"Number of Reads supporting each allele\">");
         bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=SP,Number=1,Type=String,Description=\"Span of the TR on each allel\">");
-
     }
     else{
-        bcf_hdr_append(this->vcf_header, "##INFO=<ID=CN_hap,Number=1,Type=Integer,Description=\"Number of repeats for the given allele\">");
+        bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=CN_hap,Number=1,Type=Integer,Description=\"Number of repeats for the given allele\">");
         bcf_hdr_append(this->vcf_header, "##INFO=<ID=CN_ref,Number=1,Type=Integer,Description=\"Number of repeats for the reference allele\">");
         bcf_hdr_append(this->vcf_header, "##INFO=<ID=MOTIF_IDs_REF,Number=1,Type=String,Description=\"Motif ids for each haplotype\">");
-        bcf_hdr_append(this->vcf_header, "##INFO=<ID=MOTIF_IDs_H,Number=1,Type=String,Description=\"Motif ids for each haplotype\">");
+        bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=MI,Number=1,Type=String,Description=\"Motif ids for each haplotype\">");
         bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=SP,Number=2,Type=String,Description=\"Span of the TR on each allel\">");
 
     }
@@ -263,7 +259,8 @@ void TandemTwister::writeRecordsToVcf(std::vector<vcfRecordInfoReads> & recordsI
             if (motif_ids_allesles.empty()){
                 motif_ids_allesles = ".";
             }
-            bcf_update_info_string(this->vcf_header,vcf_record, "MOTIF_IDs_alleles", motif_ids_allesles.c_str());
+            const char* mi_str = motif_ids_allesles.c_str();
+            bcf_update_format_string(this->vcf_header, vcf_record, "MI", &mi_str, 1);
             bcf_update_info_string(this->vcf_header, vcf_record, "CN_ref", CN_ref.c_str());
             std::string CNs = "";
             for (size_t i = 0; i < sorted_alleles_CN.size(); ++i) {
@@ -272,13 +269,14 @@ void TandemTwister::writeRecordsToVcf(std::vector<vcfRecordInfoReads> & recordsI
                     CNs += CN;
                 }
                 else{
-                    CNs += CN + "|";
+                    CNs += CN + ",";
                 }
             }
             if (CNs.empty()){
                 CNs = ".";
             }
-            bcf_update_info_string(this->vcf_header,vcf_record, "CN_alleles", CNs.c_str());
+            const char* cn_str = CNs.c_str();
+            bcf_update_format_string(this->vcf_header,vcf_record, "CN", &cn_str, 1);
    
         }
         else{
@@ -288,8 +286,9 @@ void TandemTwister::writeRecordsToVcf(std::vector<vcfRecordInfoReads> & recordsI
             std::string CN_H2 = sorted_alleles_CN.size() == 2 ? std::to_string(sorted_alleles_CN[1]) : std::to_string(sorted_alleles_CN[0]);
        
             bcf_update_info_string(this->vcf_header, vcf_record, "CN_ref", CN_ref.c_str());
-            bcf_update_info_string(this->vcf_header, vcf_record, "CN_H1", CN_H1.c_str());
-            bcf_update_info_string(this->vcf_header, vcf_record, "CN_H2", CN_H2.c_str());  
+            std::string CNs = CN_H1 + "," + CN_H2;
+            const char* cn_str = CNs.c_str();
+            bcf_update_format_string(this->vcf_header, vcf_record, "CN", &cn_str, 1);
       
             std::string motif_ids_h1 = get_motif_ids_str(sorted_motif_occurrences_alleles[0]);
             std::string motif_ids_h2 = "";
@@ -303,16 +302,23 @@ void TandemTwister::writeRecordsToVcf(std::vector<vcfRecordInfoReads> & recordsI
             if (motif_ids_h2.empty()){
                 motif_ids_h2 = "";
             }
-            bcf_update_info_string(this->vcf_header,vcf_record, "MOTIF_IDs_H1", motif_ids_h1.c_str()); 
-            
+            const char* mi_str = "";
+            mi_str = motif_ids_h1.c_str();
+            bcf_update_format_string(this->vcf_header,vcf_record, "MI", &mi_str, 1);
+            // chekc if the motifs intervals are the same
+            std::string motif_ids = "";
             if (sorted_motifs_intervals_alleles[0] == sorted_motifs_intervals_alleles[1]){
                 homozygous = true;
-                bcf_update_info_string(this->vcf_header,vcf_record, "MOTIF_IDs_H2", "");
+                motif_ids = motif_ids_h1;
             }
             else{
-                bcf_update_info_string(this->vcf_header,vcf_record, "MOTIF_IDs_H2", motif_ids_h2.c_str()); 
+                motif_ids = motif_ids_h1 + "|" + motif_ids_h2;
             }
-
+            mi_str = motif_ids.c_str();
+            if (motif_ids.empty()){
+                motif_ids = ".";
+            }
+            bcf_update_format_string(this->vcf_header,vcf_record, "MI", &mi_str, 1);
         
         }
         for (size_t i = 0; i < sorted_sequences.size(); ++i) {
