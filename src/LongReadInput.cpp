@@ -1085,6 +1085,8 @@ void TandemTwister::processRegionsForLongReadsInput() {
                 }
 
                 std::string vcf_file = this->output_path  + this->sampleName + "_" + this->reads_type + "_" + std::to_string(i) + ".vcf";
+                // print the results_chunk
+              
                 writeRecordsToVcf(std::get<1>(results_chunk),vcf_file);
                 outfile.close();
                 hts_close(fp);
@@ -1174,13 +1176,20 @@ void TandemTwister::processRegionsForLongReadsInput() {
             hts_close(infile_vcf);
             return ;
         }
+        
+        // verify the headers match
+        if (bcf_hdr_nsamples(this->vcf_header) != bcf_hdr_nsamples(hdr)) {
+            std::cerr << "Warning: Input and output headers may be incompatible" << std::endl;
+        }
+
         bcf1_t *rec = bcf_init();
         while (bcf_read(infile_vcf, hdr, rec) == 0) {
             bcf_unpack(rec, BCF_UN_ALL);
+            // print the record
             if (bcf_write(outfile_vcf,  this->vcf_header, rec) < 0) {
-                std::cerr << "Error writing VCF record to file." << std::endl;
+                //std::cerr << "Error writing VCF record to file." << std::endl;
                 // skip the record
-                std::cerr << "Skipping the record" << std::endl;
+                //std::cerr << "Skipping the record" << std::endl;
                 continue;
             }
         }
@@ -1201,7 +1210,7 @@ void TandemTwister::processRegionsForLongReadsInput() {
         // infile.close();
         infile_phasing.close();
         std::remove(cut_reads_file_chunk.c_str());
-        // std::remove(genotype_file_chunk.c_str());
+        //std::remove(genotype_file_chunk.c_str());
         std::remove(phasing_file_chunk.c_str());
         std::remove(vcf_file_chunk.c_str());
         bcf_hdr_destroy(hdr);

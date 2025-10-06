@@ -23,10 +23,11 @@ ifeq ($(HTSLIB_CHECK), 0)
 	$(error htslib library not found in CONDA_PREFIX)
 endif
 # Use Conda htslib
-	CXXFLAGS=-std=c++20 -funroll-loops -ftree-vectorize -fopenmp   -Wall -Wextra -Werror -O3 -g -mtune=native -Wno-unknown-pragmas -I${CONDA_PREFIX}/include 
+	CXXFLAGS=-std=c++23  -funroll-loops -ftree-vectorize -fopenmp  -Wall -Wextra -Werror -O3 -g -mtune=native -Wno-unknown-pragmas -I${CONDA_PREFIX}/include 
 	LDFLAGS=-lhts -lfmt -Wl,-rpath=${CONDA_PREFIX}/lib -L${CONDA_PREFIX}/lib 
 endif
-CXX=g++14
+
+CXX=g++
 .PHONY: default clean install
 
 # Source files

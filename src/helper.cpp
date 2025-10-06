@@ -33,7 +33,7 @@ std::string TandemTwister::get_motif_ids_str(const std::vector<uint16_t>& motif_
     }
     std::string motif_ids_str = std::accumulate(motif_ids.begin(), motif_ids.end(), std::string(),
         [](const std::string& a, uint16_t b) {
-            return a.empty() ? std::to_string(b) : a + "," + std::to_string(b);
+            return a.empty() ? std::to_string(b) : a + "_" + std::to_string(b);
         });
     return motif_ids_str;
 }
