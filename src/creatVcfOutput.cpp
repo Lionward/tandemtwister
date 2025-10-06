@@ -35,29 +35,19 @@ void TandemTwister::createVcfHeader(){
 
     // Add INFO fields to the header
     bcf_hdr_append(this->vcf_header, "##INFO=<ID=TR_type,Number=1,Type=String,Description=\"TR type STR/VNTR\">");
-
-    bcf_hdr_append(this->vcf_header, "##INFO=<ID=MOTIFS,Number=1,Type=String,Description=\"Tandem repeat motif\">");
+    bcf_hdr_append(this->vcf_header, "##INFO=<ID=MOTIFS,Number=1,Type=String,Description=\"Tandem repeat motif(s)\">");
     bcf_hdr_append(this->vcf_header, "##INFO=<ID=UNIT_LENGTH_AVG,Number=1,Type=String,Description=\"Average Length of the repeat unit\">");
-    
+    bcf_hdr_append(this->vcf_header, "##INFO=<ID=REF_SPAN,Number=1,Type=String,Description=\"Span intervals of the TR on the reference sequence\">");
+    bcf_hdr_append(this->vcf_header, "##INFO=<ID=MOTIF_IDs_REF,Number=1,Type=String,Description=\"Motif ids for the reference sequence\">");
+    bcf_hdr_append(this->vcf_header, "##INFO=<ID=CN_ref,Number=1,Type=String,Description=\"Number of repeats for the haplotpye(s)\">");
+    bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=MI,Number=1,Type=String,Description=\"Motif ids for the haplotype(s)\">");
+    bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=MI,Number=1,Type=String,Description=\"Motif ids for the haplotype(s)\">");
+    bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=SP,Number=1,Type=String,Description=\"Span of the TR for the allele(s)\">");
+
     if (this->analysis_type == "somatic" || this->analysis_type == "germline"){
-        bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=CN,Number=1,Type=Integer,Description=\"Number of repeats for each haplotype\">");
-        bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=MI,Number=1,Type=String,Description=\"Motif ids for each haplotype\">");
-        bcf_hdr_append(this->vcf_header, "##INFO=<ID=CN_ref,Number=1,Type=String,Description=\"Number of repeats for each haplotpye\">");
-        bcf_hdr_append(this->vcf_header, "##INFO=<ID=MOTIF_IDs_REF,Number=1,Type=String,Description=\"Motif ids for each haplotype\">");
-        bcf_hdr_append(this->vcf_header, "##INFO=<ID=REF_SPAN,Number=1,Type=String,Description=\"Span intervals of the TR on the ref sequence\">");
-
         bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=DP,Number=1,Type=String,Description=\"Number of Reads supporting each allele\">");
-        bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=SP,Number=1,Type=String,Description=\"Span of the TR on each allel\">");
     }
-    else{
-        bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=CN_hap,Number=1,Type=Integer,Description=\"Number of repeats for the given allele\">");
-        bcf_hdr_append(this->vcf_header, "##INFO=<ID=CN_ref,Number=1,Type=Integer,Description=\"Number of repeats for the reference allele\">");
-        bcf_hdr_append(this->vcf_header, "##INFO=<ID=MOTIF_IDs_REF,Number=1,Type=String,Description=\"Motif ids for each haplotype\">");
-        bcf_hdr_append(this->vcf_header, "##INFO=<ID=REF_SPAN,Number=1,Type=String,Description=\"Span intervals of the TR on the ref sequence\">");
-        bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=MI,Number=1,Type=String,Description=\"Motif ids for each haplotype\">");
-        bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=SP,Number=1,Type=String,Description=\"Span of the TR on each allel\">");
 
-    }
     // Add FORMAT fields to the header
     bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">");
     int32_t pass_filter_id = bcf_hdr_id2int(this->vcf_header, BCF_DT_ID, "PASS");
@@ -124,7 +114,6 @@ std::string formatStringIntervals(const std::vector<std::string>& intervals) {
     * @return: The formatted string
     *   
     */
-
     std::ostringstream oss;
     for (size_t i = 0; i < intervals.size(); ++i) {
         oss <<  intervals[i];
@@ -286,6 +275,7 @@ void TandemTwister::writeRecordsToVcf(std::vector<vcfRecordInfoReads> & recordsI
        
             bcf_update_info_string(this->vcf_header, vcf_record, "CN_ref", CN_ref.c_str());
             std::string CNs = CN_H1 + "," + CN_H2;
+            
             const char* cn_str = CNs.c_str();
             bcf_update_format_string(this->vcf_header, vcf_record, "CN", &cn_str, 1);
       
@@ -464,7 +454,8 @@ void TandemTwister::writeRecordsToVcfAssembly(std::vector<vcfRecordInfoAssembly>
         // add the motif ids to the info field motif_occurrences_hap
         std::string motif_ids_H = get_motif_ids_str(recordInfo.motif_occurrences_allele);
         std::string motif_ids_REF = get_motif_ids_str(recordInfo.motif_occurrences_ref);
-        bcf_update_info_string(this->vcf_header, vcf_record, "MOTIF_IDs_H", motif_ids_H.c_str());
+        const char* mi_str = motif_ids_H.c_str();
+        bcf_update_format_string(this->vcf_header, vcf_record, "MI", &mi_str, 1);
         bcf_update_info_string(this->vcf_header, vcf_record, "MOTIF_IDs_REF", motif_ids_REF.c_str());
 
         
@@ -475,9 +466,10 @@ void TandemTwister::writeRecordsToVcfAssembly(std::vector<vcfRecordInfoAssembly>
         }) / recordInfo.motifs.size();
 
         bcf_update_info_int32(this->vcf_header, vcf_record, "UNIT_LENGTH", &unit_length, 1);
-        int32_t repeats_value[2] = {recordInfo.allele_CN, recordInfo.ref_CN}; 
-        bcf_update_info_int32(this->vcf_header, vcf_record, "CN_hap", &repeats_value[0], 1);
-        bcf_update_info_int32(this->vcf_header, vcf_record, "CN_ref", &repeats_value[1], 1);
+        const char* allele_cn = std::to_string(recordInfo.allele_CN).c_str();
+        const char* ref_CN = std::to_string(recordInfo.ref_CN).c_str();
+        bcf_update_format_string(this->vcf_header, vcf_record, "CN", &allele_cn, 1);
+        bcf_update_info_int32(this->vcf_header, vcf_record, "CN_ref", &ref_CN ,1);
         
         uint32_t *tmpia = (uint32_t*)malloc(bcf_hdr_nsamples(this->vcf_header)*1*sizeof(uint32_t));
         // Set genotypes for each sample
