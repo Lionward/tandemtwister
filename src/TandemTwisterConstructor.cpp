@@ -121,8 +121,7 @@ TandemTwister::TandemTwister(int argc, char *argv[]) {
             tmp_var = args.at("--output_file");
         }
         //output_file = tmp_var +  ".tsv";
-        output_file_vcf = tmp_var +".vcf.gz";
-        std::cout << "output file:  " << output_file_vcf << std::endl;
+        this-> output_file_vcf = tmp_var +".vcf.gz";
         
     }
     else {

@@ -60,8 +60,8 @@ int main(int argc, char *argv[]) {
     spdlog::info("Input bam file: {}", TandemTwister.input_bam);
     spdlog::info("Input reference file: {}", TandemTwister.input_reference);
     spdlog::info("Input region file: {}", TandemTwister.region_file);
-    spdlog::info("Output path: {}", TandemTwister.output_path);
-    spdlog::info("Output file: {}", TandemTwister.output_file);
+    // spdlog::info("Output path: {}", TandemTwister.output_path);
+    spdlog::info("Output file: {}", TandemTwister.output_file_vcf);
     spdlog::info("Padding: {}", TandemTwister.padding);
     spdlog::info("Number of threads: {}", TandemTwister.num_threads);
     spdlog::info("Analysis type: {}", TandemTwister.analysis_type);
