@@ -190,14 +190,16 @@ std::vector<std::string> split(const std::string& str, char delimiter) {
     return tokens;
 }
 
+
 std::vector<std::tuple<std::string, std::vector<std::string>>> TandemTwister::regions_not_grouped(std::string& regionFile) {
     /**
-     * @brief Get the regions not grouped by chromosome.
+     * @brief Get the regions not grouped by chromosome, sorted for balanced parallel processing.
      * 
-     * This function gets the regions not grouped by chromosome.
+     * This function gets the regions sorted by region length to ensure balanced distribution
+     * across multiple threads, preventing workload imbalance.
      * 
      * @param regionFile The region file.
-     * @return A vector of tuples containing the region and the motifs.
+     * @return A vector of tuples containing the region and the motifs, sorted for balanced processing.
      * 
      */
     // open the file
@@ -206,29 +208,94 @@ std::vector<std::tuple<std::string, std::vector<std::string>>> TandemTwister::re
         std::cerr << "Error: Unable to open the region file" << std::endl;
         exit(1);
     }
-    std::vector<std::tuple<std::string, std::vector<std::string>>> TR_regions;
+    
+    std::vector<std::tuple<std::string, std::vector<std::string>, int, std::string, int, int>> TR_regions_with_metadata;
     std::string line;
+    
+    // First pass: read all regions and calculate their lengths
     while (std::getline(region_file, line)) {
         std::istringstream iss(line);
         std::string chr, start, end, motifs;
-        // check if start and end are the same or the difference is one or negative
+        
         if (!(iss >> chr >> start >> end >> motifs)) {
             std::cerr << "Error: Incorrect format in line: " << line << std::endl;
             continue;
         }
+        
+        // Calculate region length for balancing
+        int start_int = std::stoi(start);
+        int end_int = std::stoi(end);
+        int region_length = end_int - start_int;
+        
         // Split the motifs by comma
         std::vector<std::string> motifList = split(motifs, ',');
-        // sort the motifs by length from the longest to the shortest
-        std::sort(motifList.begin(), motifList.end(), [](const std::string& a, const std::string& b) { return a.size() > b.size(); });
-        std::string region = chr + ":" + start + "-" + end;        
-        TR_regions.push_back(std::make_tuple(region, motifList));
+        
+        // Sort motifs by length from longest to shortest
+        std::sort(motifList.begin(), motifList.end(), 
+                 [](const std::string& a, const std::string& b) { 
+                     return a.size() > b.size(); 
+                 });
+        
+        std::string region = chr + ":" + start + "-" + end;
+        
+        TR_regions_with_metadata.push_back(std::make_tuple(region, motifList, region_length, chr, start_int, end_int));
     }
-    // close the file
     region_file.close();
+    
+    // Sort regions by length for block disturbution
+    std::sort(TR_regions_with_metadata.begin(), TR_regions_with_metadata.end(),
+             [](const auto& a, const auto& b) {
+                 return std::get<2>(a) > std::get<2>(b);
+             });
+    
+    // Ensure we don't have more threads than regions
+    if (this->num_threads > TR_regions_with_metadata.size()) {
+        this->num_threads = TR_regions_with_metadata.size();
+    }
 
+    //tem block vector
+    std::vector<std::vector<std::tuple<std::string, std::vector<std::string>, std::string, int, int>>> temp_blocks(this->num_threads);
+    
+    // Distribute the regions in a way to ensure that the blocks contains the same number of big regions.
+    // this will optimize the run time
+    for (size_t i = 0; i < TR_regions_with_metadata.size(); ++i) {
+        auto& region_data = TR_regions_with_metadata[i];
+        size_t block_index = i % this->num_threads;
+        temp_blocks[block_index].push_back(
+            std::make_tuple(
+                std::get<0>(region_data), // region string
+                std::get<1>(region_data), // motifs
+                std::get<3>(region_data), // chr
+                std::get<4>(region_data), // start
+                std::get<5>(region_data)  // end
+            )
+        );
+    }
+    
+    // Sort each block by chromosome, then start, then end
+    for (auto& block : temp_blocks) {
+        std::sort(block.begin(), block.end(),
+                 [](const auto& a, const auto& b) {
+                     if (std::get<2>(a) != std::get<2>(b)) {
+                         return std::get<2>(a) < std::get<2>(b);
+                     }
+                     if (std::get<3>(a) != std::get<3>(b)) {
+                         return std::get<3>(a) < std::get<3>(b);
+                     }
+                     return std::get<4>(a) < std::get<4>(b);
+                 });
+    }
+    
+    // Flatten the blocks 
+    std::vector<std::tuple<std::string, std::vector<std::string>>> TR_regions;
+    for (size_t block = 0; block < this->num_threads; ++block) {
+        for (auto& region : temp_blocks[block]) {
+            TR_regions.push_back(std::make_tuple(std::get<0>(region), std::get<1>(region)));
+        }
+    }
+    
     return TR_regions;
 }
-
 
 std::unordered_map<std::string, std::vector<std::tuple<std::string, std::vector<std::string>>>> TandemTwister::regions_grouped_by_chr(std::string  &regionFile,std::vector<std::string>& accepted_chromosome_names) {
     

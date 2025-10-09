@@ -40,6 +40,7 @@ void TandemTwister::createVcfHeader(){
     bcf_hdr_append(this->vcf_header, "##INFO=<ID=REF_SPAN,Number=1,Type=String,Description=\"Span intervals of the TR on the reference sequence\">");
     bcf_hdr_append(this->vcf_header, "##INFO=<ID=MOTIF_IDs_REF,Number=1,Type=String,Description=\"Motif ids for the reference sequence\">");
     bcf_hdr_append(this->vcf_header, "##INFO=<ID=CN_ref,Number=1,Type=String,Description=\"Number of repeats for the haplotpye(s)\">");
+    bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=CN,Number=1,Type=String,Description=\"Copy numbeof the TR for the allele(s)\">");
     bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=MI,Number=1,Type=String,Description=\"Motif ids for the haplotype(s)\">");
     bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=MI,Number=1,Type=String,Description=\"Motif ids for the haplotype(s)\">");
     bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=SP,Number=1,Type=String,Description=\"Span of the TR for the allele(s)\">");
@@ -241,7 +242,7 @@ void TandemTwister::writeRecordsToVcf(std::vector<vcfRecordInfoReads> & recordsI
                     motif_ids_allesles += motif_ids;
                 }
                 else{
-                    motif_ids_allesles += motif_ids + "/";
+                    motif_ids_allesles += motif_ids + ",";
                 }
             }
             if (motif_ids_allesles.empty()){
@@ -300,7 +301,7 @@ void TandemTwister::writeRecordsToVcf(std::vector<vcfRecordInfoReads> & recordsI
                 motif_ids = motif_ids_h1;
             }
             else{
-                motif_ids = motif_ids_h1 + "/" + motif_ids_h2;
+                motif_ids = motif_ids_h1 + "," + motif_ids_h2;
             }
             mi_str = motif_ids.c_str();
             if (motif_ids.empty()){
