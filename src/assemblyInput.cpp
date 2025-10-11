@@ -445,7 +445,8 @@ void TandemTwister::processRegionsForAssemblyInput() {
 
     
     bcf_hdr_t *hdr = nullptr;
-  
+    std::vector<bcf1_t*> all_records;
+    std::vector<std::tuple<std::string, int, int, bcf1_t*>> records_with_pos; // chr, pos, rid, record      
     // open the output files of the different processes and merge the results
     for (size_t i = 0; i < this->input_chromosome_names.size(); ++i) {
         std::string chromosome = this->input_chromosome_names[i];
@@ -485,15 +486,21 @@ void TandemTwister::processRegionsForAssemblyInput() {
         
         hdr = bcf_hdr_read(infile_vcf);
         
-
         bcf1_t *rec = bcf_init();
         while (bcf_read(infile_vcf, hdr, rec) == 0) {
-           
-            if (bcf_write(outfile_vcf,  this->vcf_header, rec) < 0) {
-                std::cerr << "Error writing VCF record to file." << std::endl;
-                exit(EXIT_FAILURE);
-            }
+            bcf_unpack(rec, BCF_UN_ALL);
+            
+            // Create a copy of the record
+            bcf1_t *rec_copy = bcf_dup(rec);
+            bcf_unpack(rec_copy, BCF_UN_ALL);
+            
+            std::string chrom = bcf_hdr_id2name(hdr, rec_copy->rid);
+            int rid = rec_copy->rid; // Reference ID for proper chromosome ordering
+            
+            records_with_pos.emplace_back(chrom, rec_copy->pos, rid, rec_copy);
         }
+        
+
         bcf_destroy(rec);
         hts_close(infile_vcf);
         std::stringstream buffer;
@@ -514,7 +521,27 @@ void TandemTwister::processRegionsForAssemblyInput() {
         std::remove(phasing_file_chunk.c_str());
         std::remove(vcf_file_chunk.c_str());
     }
+    // Sort all records by chromosome and position
+    std::sort(records_with_pos.begin(), records_with_pos.end(),
+    [](const auto& a, const auto& b) {
+        // First compare by reference ID (rid) - this ensures correct chromosome order
+        if (std::get<2>(a) != std::get<2>(b)) {
+            return std::get<2>(a) < std::get<2>(b);
+        }
+        // Then compare by position
+        return std::get<1>(a) < std::get<1>(b);
+    });
 
+    
+    
+    // Write sorted records to final VCF
+    for (auto& record_data : records_with_pos) {
+        bcf1_t* rec = std::get<3>(record_data);
+        if (bcf_write(outfile_vcf, this->vcf_header, rec) < 0) {
+            std::cerr << "Error writing VCF record to file." << std::endl;
+        }
+        bcf_destroy(rec);
+    }
     bcf_hdr_destroy(hdr);
     // gzip the vcf file
     if (this->keep_cut_sequence){
