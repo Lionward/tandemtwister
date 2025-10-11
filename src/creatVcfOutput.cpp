@@ -39,7 +39,7 @@ void TandemTwister::createVcfHeader(){
     bcf_hdr_append(this->vcf_header, "##INFO=<ID=UNIT_LENGTH_AVG,Number=1,Type=String,Description=\"Average Length of the repeat unit\">");
     bcf_hdr_append(this->vcf_header, "##INFO=<ID=REF_SPAN,Number=1,Type=String,Description=\"Span intervals of the TR on the reference sequence\">");
     bcf_hdr_append(this->vcf_header, "##INFO=<ID=MOTIF_IDs_REF,Number=1,Type=String,Description=\"Motif ids for the reference sequence\">");
-    bcf_hdr_append(this->vcf_header, "##INFO=<ID=CN_ref,Number=1,Type=String,Description=\"Number of repeats for the haplotpye(s)\">");
+    bcf_hdr_append(this->vcf_header, "##INFO=<ID=CN_ref,Number=1,Type=String,Description=\"Number of repeats for the reference sequence\">");
     bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=CN,Number=1,Type=String,Description=\"Copy numbeof the TR for the allele(s)\">");
     bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=MI,Number=1,Type=String,Description=\"Motif ids for the haplotype(s)\">");
     bcf_hdr_append(this->vcf_header, "##FORMAT=<ID=MI,Number=1,Type=String,Description=\"Motif ids for the haplotype(s)\">");
@@ -468,9 +468,9 @@ void TandemTwister::writeRecordsToVcfAssembly(std::vector<vcfRecordInfoAssembly>
 
         bcf_update_info_int32(this->vcf_header, vcf_record, "UNIT_LENGTH", &unit_length, 1);
         const char* allele_cn = std::to_string(recordInfo.allele_CN).c_str();
-        const char* ref_CN = std::to_string(recordInfo.ref_CN).c_str();
+        std::string ref_CN = std::to_string(recordInfo.ref_CN);
         bcf_update_format_string(this->vcf_header, vcf_record, "CN", &allele_cn, 1);
-        bcf_update_info_int32(this->vcf_header, vcf_record, "CN_ref", &ref_CN ,1);
+        bcf_update_info_string(this->vcf_header, vcf_record, "CN_ref", ref_CN.c_str());
         
         uint32_t *tmpia = (uint32_t*)malloc(bcf_hdr_nsamples(this->vcf_header)*1*sizeof(uint32_t));
         // Set genotypes for each sample

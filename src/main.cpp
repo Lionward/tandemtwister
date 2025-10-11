@@ -81,15 +81,14 @@ int main(int argc, char *argv[]) {
         else {
             spdlog::info("min_match_ratio_s: [1.,1.,1,0.55,0.5,0.65,0.55,0.625,0.65,0.5]");
         }
-        spdlog::info("min_match_ratio_s: {}", TandemTwister.min_match_ratio_s);
         spdlog::info("start_eps_str: {}", TandemTwister.start_eps_str);
         spdlog::info("start_eps_vntr: {}", TandemTwister.start_eps_vntr);
         spdlog::info("minPts_frac: {}", TandemTwister.minPts_frac);
         spdlog::info("noise_limit_str: {}", TandemTwister.noise_limit_str);
         spdlog::info("noise_limit_vntr: {}", TandemTwister.noise_limit_vntr);
         spdlog::info("cluster_iter: {}", TandemTwister.cluster_iter);
-        spdlog::info("minPts_str: {}", TandemTwister.minPts_str);
-        spdlog::info("minPts_vntr: {}", TandemTwister.minPts_vntr);
+        //spdlog::info("minPts_str: {}", TandemTwister.minPts_str);
+        //spdlog::info("minPts_vntr: {}", TandemTwister.minPts_vntr);
 
         spdlog::info("correct genotype calling: {}", TandemTwister.correctCalling == 0 ? "false" : "true");
         if (TandemTwister.correctCalling) {
