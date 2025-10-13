@@ -79,7 +79,7 @@ std::pair<std::vector<int32_t>, std::vector<std::pair<uint32_t, uint32_t>>> SWA(
     * @param matrix_pointers A vector of the previous backtracking pointers.
     * @return A pair containing the new scoring matrix and the backtracking pointers.
     */
-
+ 
     uint32_t rows = seq1.length() + 1;
     uint32_t cols = seq2.length() + 1;
     auto index = [&](uint32_t i, uint32_t j) { return i * cols + j; };
@@ -125,27 +125,29 @@ std::vector<Interval> findBestIntervalSet(std::vector<std::vector<Interval>>& al
     * @param allIntervals  A vector of vectors of intervals.
     */
 
-    std::unordered_map<uint16_t, std::vector<Interval>> intervalsByEnd;
+    std::unordered_map<uint64_t, std::vector<Interval>> intervalsByEnd;
     for (const auto& motifIntervals : allIntervals) {
         for (const auto& interval : motifIntervals) {
             intervalsByEnd[interval.end].push_back(interval);
         }
     }
+ 
 
     // Find the maximum end position
-    uint16_t maxEnd = 0;
+    uint64_t maxEnd = 0;
     for (const auto& entry : intervalsByEnd) {
         maxEnd = std::max(maxEnd, entry.first);
     }
 
+
     // DP table to store maximum scores
-    std::vector<uint32_t> maxScores(maxEnd + 1, 0);
+    std::vector<uint64_t> maxScores(maxEnd + 1, 0);
 
     // Vector to store selected intervals for each position
     std::vector<std::vector<Interval>> selectedIntervals(maxEnd + 1);
 
     // Iterate through each position
-    for (uint16_t i = 1; i <= maxEnd; ++i) {
+    for (uint64_t i = 1; i <= maxEnd; ++i) {
         // Initialize with the previous maximum score and intervals
         maxScores[i] = maxScores[i - 1];
         selectedIntervals[i] = selectedIntervals[i - 1];
@@ -155,7 +157,7 @@ std::vector<Interval> findBestIntervalSet(std::vector<std::vector<Interval>>& al
             // Iterate through all intervals ending at position i
             for (const auto& interval : intervalsByEnd[i]) {
                 // Calculate the potential new score
-                uint32_t newScore = maxScores[interval.start - 1] + interval.score;
+                uint64_t newScore = maxScores[interval.start - 1] + interval.score;
 
                 // Update the DP table and selected intervals if the new score is higher
                 if (newScore > maxScores[i]) {
@@ -230,6 +232,7 @@ std::vector<Interval>  findMotifIntervals(std::string &seq, std::string& motif, 
         if (idx == 0 && score !=0 ) { 
             continue;
         }
+        
         auto [tempInterval, isMatch,best_score] = back_track(matrix_s, matrix_p, i,rows,cols, threshold);
         if (!isMatch ) {
             continue;
@@ -239,6 +242,8 @@ std::vector<Interval>  findMotifIntervals(std::string &seq, std::string& motif, 
         interval.motif_id = motif_id;
         interval.score = best_score;
     }
+    // Print debug output showing all found motif intervals before returning them
+
 
     return std::cref(intervals);
 }
