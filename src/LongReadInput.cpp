@@ -130,7 +130,7 @@ std::vector<Interval> TandemTwister::genotype_reference(std::string &regionWithP
 
 
 
-std::string  TandemTwister::generate_phasing_results(std::vector<std::pair<std::string,std::vector<Interval>>> & first_cluster, std::vector<std::pair<std::string,std::vector<Interval>>> & second_cluster ,std::vector<std::pair<std::string,std::vector<Interval>>> &noise_cluster , unsigned int CN_first, unsigned int CN_second, const std::string& region) {
+std::string  TandemTwister::generate_phasing_results(std::vector<std::tuple<std::string,std::vector<Interval>,std::string>> & first_cluster, std::vector<std::tuple<std::string,std::vector<Interval>,std::string>> & second_cluster ,std::vector<std::pair<std::string,std::vector<Interval>>> &noise_cluster , unsigned int CN_first, unsigned int CN_second, const std::string& region) {
     /**
      * Generate the phasing results
      * @param first_cluster: The first cluster
@@ -144,10 +144,10 @@ std::string  TandemTwister::generate_phasing_results(std::vector<std::pair<std::
 
     std::string phasing_result = "";
     for (const auto& cluster : first_cluster) {
-        phasing_result += region  + "\t" + cluster.first + "\t" + "0" + "\t" + std::to_string(cluster.second.size())  + "\t" + std::to_string(CN_first) +  "\n";
+        phasing_result += region  + "\t" + std::get<0>(cluster) + "\t" + "0" + "\t" + std::to_string(std::get<1>(cluster).size())  + "\t" + std::to_string(CN_first) +  "\n";
     }
     for (const auto& cluster : second_cluster) {
-        phasing_result += region  + "\t" + cluster.first + "\t" + "1" + "\t" + std::to_string(cluster.second.size())  + "\t" + std::to_string(CN_second) + "\n";
+        phasing_result += region  + "\t" +  std::get<0>(cluster) + "\t" + "1" + "\t" + std::to_string(std::get<1>(cluster).size())  + "\t" + std::to_string(CN_second) + "\n";
     }
     for (const auto& cluster : noise_cluster) {
         phasing_result += region  + "\t" + cluster.first + "\t" + "-1" + "\t" + std::to_string(cluster.second.size())  + "\t" + "-1" + "\n";
@@ -273,7 +273,7 @@ std::vector<std::pair<uint32_t, uint32_t>> TandemTwister::cut_read_in_TR_region(
 
 
 
-std::tuple<uint32_t, uint32_t, uint16_t> TandemTwister::findMostOccurringCopyNumber(const std::vector<std::pair<std::string, std::vector<Interval>>>& cluster) {
+std::tuple<uint32_t, uint32_t, uint16_t> TandemTwister::findMostOccurringCopyNumber(const std::vector<std::tuple<std::string, std::vector<Interval>, std::string>>& cluster) {
     /**
      * Find the most occurring copy number in the cluster
      * @param cluster: The cluster to search for the most occurring copy number
@@ -283,62 +283,99 @@ std::tuple<uint32_t, uint32_t, uint16_t> TandemTwister::findMostOccurringCopyNum
     if (cluster.empty()) {
         return std::make_tuple(0, 0, 0);
     }
-    std::unordered_map<uint32_t, uint32_t> frequencyMap;
+    std::unordered_map<std::string, uint32_t> frequencyMap;
 
+
+
+    std::string temp_feature = "";
     for (const auto& tuple : cluster) {
-        uint32_t copyNumber = tuple.second.size();
+        temp_feature = std::get<2>(tuple);
+        ++frequencyMap[temp_feature];
+    }
 
-        ++frequencyMap[copyNumber];
+
+    // Visualize the frequencyMap for debugging/inspection
+    spdlog::debug("Copy number frequency map visualization:");
+    for (const auto& entry : frequencyMap) {
+        spdlog::debug("Copy number: {}, Frequency: {}", entry.first, entry.second);
     }
 
 
     // if the size of the cluster is 2 then check if the CN of both is the same then return the index of the first read, if not return the index of the maximum CN
     if (cluster.size() == 2) {
-        if (cluster[0].second.size() == cluster[1].second.size()) {
-            return std::make_tuple(cluster[0].second.size(), 2, 0);
+        if (std::get<1> (cluster[0]).size() == std::get<1>(cluster[1]).size()) {
+            return std::make_tuple(std::get<1>(cluster[0]).size(), 2, 0);
         }
         else {
-            return std::make_tuple(cluster[0].second.size() > cluster[1].second.size() ? cluster[0].second.size() : cluster[1].second.size(), 1, cluster[0].second.size() > cluster[1].second.size() ? 0 : 1);
+            return std::make_tuple(std::get<1>(cluster[0]).size() > std::get<1>(cluster[1]).size() ? std::get<1>(cluster[0]).size() : std::get<1>(cluster[1]).size(), 1, std::get<1>(cluster[0]).size() > std::get<1>(cluster[1]).size() ? 0 : 1);
         }
     }
 
     // if there are more than 2 copy numbers with the same frequency then return the index of the highest one
-
-
     auto maxElement = std::max_element(frequencyMap.begin(), frequencyMap.end(),
-        [](const std::pair<uint32_t, uint32_t>& a, const std::pair<uint32_t, uint32_t>& b) {
+        [](const std::pair<std::string, uint32_t>& a, const std::pair<std::string, uint32_t>& b) {
             return a.second < b.second;
         });
+    spdlog::debug("maxElement: copyNumber = {}, frequency = {}", maxElement->first, maxElement->second);
     // get the second most occuring copy number
-    auto secondMaxElement = std::max_element(frequencyMap.begin(), frequencyMap.end(),
-        [maxElement](const std::pair<uint32_t, uint32_t>& a, const std::pair<uint32_t, uint32_t>& b) {
-            return a.second < b.second && a.first != maxElement->first;
-        });
-    
-    // if the second most occuring copy number has the same frequency as the most occuring copy number then return the index of the highest copy number
-    if (secondMaxElement != frequencyMap.end() && secondMaxElement->second == maxElement->second) {
-        auto maxCopyNumber = std::max(maxElement->first, secondMaxElement->first);
-        for (size_t i = 0; i < cluster.size(); ++i) {
-            if (cluster[i].second.size() == maxCopyNumber) {
-                return std::make_tuple(maxCopyNumber, maxElement->second, i);
-            }
+    // Properly find the second most frequent element distinct from maxElement
+    auto secondMaxElement = frequencyMap.end();
+    uint32_t secondMaxFreq = 0;
+    for (const auto& entry : frequencyMap) {
+        if (entry.first != maxElement->first && entry.second > secondMaxFreq) {
+            secondMaxFreq = entry.second;
+            secondMaxElement = frequencyMap.find(entry.first);
         }
     }
 
+    if (secondMaxElement != frequencyMap.end()) {
+        spdlog::debug("Second max element: copyNumber = {}, frequency = {}", secondMaxElement->first, secondMaxElement->second);
+    } else {
+        spdlog::debug("Second max element not found.");
+    }
+    auto sumCopyNumberFromFeatureString = [](const std::string& featureStr) -> uint32_t {
+        uint32_t sum = 0;
+        std::istringstream iss(featureStr);
+        std::string token;
+        while (iss >> token) {
+            try {
+                sum += static_cast<uint32_t>(std::stoul(token));
+            } catch (const std::exception& e) {
+                spdlog::warn("Failed to convert part of feature string '{}' to uint32_t: {}", token, e.what());
+            }
+        }
+        return sum;
+    };
 
-  
-    uint32_t mostOccurringCopyNumber = maxElement->first;
-    uint32_t frequency = maxElement->second;
+    auto maxElement_cn = sumCopyNumberFromFeatureString(maxElement->first);
     
+    std::string mostOccurringCopyNumber_str =  maxElement->first;
+    uint32_t mostOccurringCopyNumber_int = maxElement_cn;
+    uint32_t frequency = maxElement->second;
     uint16_t index = 0;
+
+    // if the second most occuring copy number has the same frequency as the most occuring copy number then return the index of the highest copy number
+    if (secondMaxElement != frequencyMap.end() && secondMaxElement->second == maxElement->second && frequencyMap.size() > 1) {
+        auto secondMaxElement_cn = sumCopyNumberFromFeatureString(secondMaxElement->first);
+        spdlog::debug("Second max element: copyNumber = {}, frequency = {}", secondMaxElement->first, secondMaxElement->second);
+        auto maxCopyNumber = std::max(maxElement_cn, secondMaxElement_cn);
+        if (maxCopyNumber != maxElement_cn){
+            mostOccurringCopyNumber_str = secondMaxElement->first;
+            frequency = secondMaxElement ->second;
+            mostOccurringCopyNumber_int = secondMaxElement_cn;
+        }
+    }
+
+    spdlog::debug("mostOccurringCopyNumber compostion is:  ({})", mostOccurringCopyNumber_str);
+
     for (size_t i = 0; i < cluster.size(); ++i) {
-        if (cluster[i].second.size() == mostOccurringCopyNumber) {
+        if (std::get<2>(cluster[i]) == mostOccurringCopyNumber_str) {
             index = i;
             break;
         }
     }
-
-    return std::make_tuple(mostOccurringCopyNumber, frequency, index);
+    spdlog::debug("Index of the mostOccusring copy number is {}: " ,index );
+    return std::make_tuple(mostOccurringCopyNumber_int, frequency, index);
 }
 std::tuple<uint32_t, uint32_t, uint16_t> TandemTwister::findMedianCopyNumber(const std::vector<std::pair<std::string, std::vector<Interval>>>& cluster) {
     /**
@@ -392,7 +429,7 @@ void TandemTwister::print_dashes_representation(const std::string& read_name, co
 
 void TandemTwister::cluster_by_features(const std::string& chr, 
                                         std::vector<std::tuple<std::string, std::vector<Interval>, uint8_t>>& reads_intervals, 
-                                        std::vector<std::vector<std::pair<std::string, std::vector<Interval>>>> & clusters, 
+                                        std::vector<std::vector<std::tuple<std::string, std::vector<Interval>, std::string>>> & clusters, 
                                         std::vector<std::pair<std::string, std::vector<Interval>>>& noise_cluster, 
                                         arma::mat &region_features, 
                                         uint16_t motif_size,
@@ -414,17 +451,16 @@ void TandemTwister::cluster_by_features(const std::string& chr,
         haplody = true;
         cluster_reads(region_features, reads_intervals, clusters, noise_cluster, motif_size);
         clusters.resize(2);
-
         // replace the second cluster with the first cluster if the copy number of the second cluster is more than the first cluster (this )
         uint cn_1_avg = 0;
         uint cn_2_avg = 0;
         for (const auto& read : clusters[0]) {
-            cn_1_avg += read.second.size();
+            cn_1_avg += std::get<1>(read).size();
         }
         cn_1_avg /= clusters[0].size();
 
         for (const auto& read : clusters[1]) {
-            cn_2_avg += read.second.size();
+            cn_2_avg += std::get<1>(read).size();;
         }
         cn_2_avg /= clusters[1].size();
 
@@ -478,7 +514,7 @@ regionResult TandemTwister::processLongReads(samFile* &fp, hts_itr_t* &iter,cons
 
     // define the variables that will be outputted
     arma::mat region_features; 
-    std::vector<std::vector<std::pair<std::string, std::vector<Interval>>>> clusters;
+    std::vector<std::vector<std::tuple<std::string, std::vector<Interval>, std::string>>> clusters;
     std::vector<std::pair<std::string, std::vector<Interval>>>  noise_cluster;
     std::vector<std::string> alt_seqs;
     std::vector<uint16_t> indices_consensus_read = {};
@@ -715,10 +751,11 @@ regionResult TandemTwister::processLongReads(samFile* &fp, hts_itr_t* &iter,cons
             
             for (const auto& read : reads_intervals) {
                 if (std::get<2>(read) == 1){
-                    clusters[0].push_back(std::make_pair(std::get<0>(read),std::get<1>(read)));
+
+                    clusters[0].push_back(std::make_tuple(std::get<0>(read),std::get<1>(read),""));
                 }
                 else if (std::get<2>(read) == 2){
-                    clusters[1].push_back(std::make_pair(std::get<0>(read),std::get<1>(read)));
+                    clusters[1].push_back(std::make_tuple(std::get<0>(read),std::get<1>(read),""));
                 }
                 else {
                     noise_cluster.push_back(std::make_pair(std::get<0>(read),std::get<1>(read)));
@@ -735,19 +772,21 @@ regionResult TandemTwister::processLongReads(samFile* &fp, hts_itr_t* &iter,cons
             clusters[0].reserve(reads_intervals.size());
             for (const auto& read : reads_intervals) {
                 if (std::get<2>(read) == 1 || std::get<2>(read) == 2){
-                    clusters[0].push_back(std::make_pair(std::get<0>(read),std::get<1>(read)));
+                    clusters[0].push_back(std::make_tuple(std::get<0>(read), std::get<1>(read), ""));
                 }
                 else {
-                    noise_cluster.push_back(std::make_pair(std::get<0>(read),std::get<1>(read)));
+                    noise_cluster.push_back(std::make_pair(std::get<0>(read), std::get<1>(read)));
                 }
             }
         }
         else {
-
+            spdlog::debug("Clustering by features as no haplotypes tags were found in the region.");
             cluster_by_features(chr, reads_intervals, clusters, noise_cluster, region_features, motif_size, haplody);
         }
     }
+
     else{
+        spdlog::debug("Clustering by features (input bam is not tagged).");
         cluster_by_features(chr, reads_intervals, clusters, noise_cluster, region_features, motif_size, haplody);
     }
 
@@ -764,8 +803,8 @@ regionResult TandemTwister::processLongReads(samFile* &fp, hts_itr_t* &iter,cons
                     alt_seqs.push_back("");
                 }
                 else {
-                    copy_numbers.push_back(cluster[0].second.size());
-                    alt_seqs.push_back(reads_sequences[cluster[0].first]);
+                    copy_numbers.push_back(std::get<1>(cluster[0]).size());
+                    alt_seqs.push_back(reads_sequences[std::get<0>(cluster[0])]);
                 }
                 cn_occurences_in_cluster.push_back(1);
                 indices_consensus_read.push_back(0);
@@ -785,14 +824,14 @@ regionResult TandemTwister::processLongReads(samFile* &fp, hts_itr_t* &iter,cons
             }
 
             // after removing the intervals that didn't pass the consensus range we need to cut the sequence from the start of the first interval to the end of the last interval (if intermediate intervals are removed they will appear as interrupted sequences; consider removing this part of the sequence if the intermediate intervals are removed)
-            std::string cut_seq = reads_sequences[cluster[0].first].substr(cluster[0].second[0].start - 1, cluster[0].second.back().end - cluster[0].second[0].start + 1);
+            std::string cut_seq = reads_sequences[std::get<0>(cluster[0])].substr(std::get<1>(cluster[0])[0].start - 1, std::get<1>(cluster[0]).back().end - std::get<1>(cluster[0])[0].start + 1);
             
             // reset the intervals starts and ends by subtracting the start of the first interval (this is to make the intervals start from 0) after removing the intervals that didn't pass the consensus range
-            auto start_interval = cluster[0].second[0].start;
-            for (size_t j = 0; j < cluster[0].second.size(); ++j) {
+            auto start_interval = std::get<1>(cluster[0])[0].start;
+            for (size_t j = 0; j < std::get<1>(cluster[0]).size(); ++j) {
 
-                cluster[0].second[j].start -= start_interval - 1;
-                cluster[0].second[j].end -= start_interval - 1;
+                std::get<1>(cluster[0])[j].start -= start_interval - 1;
+                std::get<1>(cluster[0])[j].end -= start_interval - 1;
 
             }
             
@@ -812,7 +851,7 @@ regionResult TandemTwister::processLongReads(samFile* &fp, hts_itr_t* &iter,cons
                 uint16_t index_cn = 0;
                 std::tie(cn, occurences, index_cn) = findMostOccurringCopyNumber(cluster);
                 copy_numbers.push_back(cn);
-                alt_seqs.push_back(reads_sequences[cluster[index_cn].first]);
+                alt_seqs.push_back(reads_sequences[std::get<0>(cluster[index_cn])]);
                 indices_consensus_read.push_back(index_cn);
                 cn_occurences_in_cluster.push_back(occurences);
             }
@@ -1003,7 +1042,7 @@ std::tuple<std::vector<std::string> ,std::vector<vcfRecordInfoReads>> TandemTwis
                 cluster_sizes.push_back(cluster.size());
                 std::vector<uint16_t> motif_ids_allele = {};
                 std::vector<std::string> motif_ids_allele_cord = {};
-                for (const auto &interval : cluster[region_results.indices_consensus_read[i]].second) {
+                for (const auto &interval : std::get<1>(cluster[region_results.indices_consensus_read[i]])) {
                     motif_ids_allele.push_back(interval.motif_id);
                     motif_ids_allele_cord.push_back("(" + std::to_string(interval.start) + "-" + std::to_string(interval.end) + ")");
                 }
