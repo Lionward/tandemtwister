@@ -492,6 +492,13 @@ void TandemTwister::get_hp_tag(uint8_t *&hp_tag, bam1_t *reads, uint32_t &hp_val
     }
 }
 
+std::string get_read_features_str(const arma::rowvec& read_features) {
+    std::string read_features_str = "";
+    for (uint16_t i = 4; i < read_features.n_cols; ++i) {
+        read_features_str += fmt::format("{} ", read_features(i));
+    }
+    return read_features_str;
+}
 regionResult TandemTwister::processLongReads(samFile* &fp, hts_itr_t* &iter,const size_t start_pos, const size_t end_pos, const std::string& region, 
                                     std::vector<std::string>& motifs, uint16_t motif_size, ::string &chr,
                                     std::vector<std::pair<uint32_t, uint32_t>> &tandem_runs,
@@ -750,12 +757,16 @@ regionResult TandemTwister::processLongReads(samFile* &fp, hts_itr_t* &iter,cons
         if (first_cluter && second_cluster){
             
             for (const auto& read : reads_intervals) {
+                // Use the index of the read in reads_intervals as the row index
+                size_t read_index = &read - &reads_intervals[0];
+                auto read_features = region_features.row(read_index);
+                std::string read_features_str = get_read_features_str(read_features);
                 if (std::get<2>(read) == 1){
-
-                    clusters[0].push_back(std::make_tuple(std::get<0>(read),std::get<1>(read),""));
+                    // skip the first 4 features (cut_read_length, CN_total, path_purity, path_total_score)
+                    clusters[0].push_back(std::make_tuple(std::get<0>(read),std::get<1>(read),read_features_str));
                 }
                 else if (std::get<2>(read) == 2){
-                    clusters[1].push_back(std::make_tuple(std::get<0>(read),std::get<1>(read),""));
+                    clusters[1].push_back(std::make_tuple(std::get<0>(read),std::get<1>(read),read_features_str));
                 }
                 else {
                     noise_cluster.push_back(std::make_pair(std::get<0>(read),std::get<1>(read)));
@@ -771,8 +782,11 @@ regionResult TandemTwister::processLongReads(samFile* &fp, hts_itr_t* &iter,cons
         else if (first_cluter || second_cluster) {
             clusters[0].reserve(reads_intervals.size());
             for (const auto& read : reads_intervals) {
+                size_t read_index = &read - &reads_intervals[0];
+                auto read_features = region_features.row(read_index);
+                std::string read_features_str = get_read_features_str(read_features);
                 if (std::get<2>(read) == 1 || std::get<2>(read) == 2){
-                    clusters[0].push_back(std::make_tuple(std::get<0>(read), std::get<1>(read), ""));
+                    clusters[0].push_back(std::make_tuple(std::get<0>(read), std::get<1>(read), read_features_str));
                 }
                 else {
                     noise_cluster.push_back(std::make_pair(std::get<0>(read), std::get<1>(read)));
