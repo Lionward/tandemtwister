@@ -65,7 +65,7 @@ struct Interval {
 };
 
 struct regionResult {
-    std::vector<std::vector<std::tuple<std::string, std::vector<Interval>, std::string>>> clusters = {};
+    std::vector<std::vector<std::pair<std::string, std::vector<Interval>>>> clusters = {};
     std::vector<std::pair<std::string, std::vector<Interval>>>  noise_cluster = {};
     std::vector<std::string> alt_seqs = {};
     std::vector<uint16_t> indices_consensus_read = {};
@@ -73,7 +73,7 @@ struct regionResult {
     std::vector<uint32_t> cn_occurences_in_cluster = {};
     uint16_t num_reads_covering_TR = 0;
     regionResult(
-        std::vector<std::vector<std::tuple<std::string, std::vector<Interval>, std::string>>> clusters,
+        std::vector<std::vector<std::pair<std::string, std::vector<Interval>>>> clusters,
         std::vector<std::pair<std::string, std::vector<Interval>>> noise_cluster,
         std::vector<std::string> alt_seqs,
         std::vector<uint16_t> indices_consensus_read,
@@ -350,10 +350,10 @@ public:
         void get_hp_tag(uint8_t *&hp_tag, bam1_t *reads, uint32_t &hp_value);
 
         //void process_chunk_ONT(const std::vector<std::tuple<std::string,std::string>>& chunk,  hts_idx_t* idx, bam_hdr_t* h, samFile* fp, faidx_t *fai);
-        std::tuple<uint32_t, uint32_t, uint16_t> findMostOccurringCopyNumber(const std::vector<std::tuple<std::string, std::vector<Interval>, std::string>>& cluster);
+        std::tuple<uint32_t, uint32_t, uint16_t> findMostOccurringCopyNumber(const std::vector<std::pair<std::string, std::vector<Interval>>>& cluster);
         std::tuple<uint32_t, uint32_t, uint16_t> findMedianCopyNumber(const std::vector<std::pair<std::string, std::vector<Interval>>>& cluster);
 
-        std::string generate_phasing_results(std::vector<std::tuple<std::string,std::vector<Interval>, std::string>> & first_cluster, std::vector<std::tuple<std::string,std::vector<Interval>, std::string>> & second_cluster,
+        std::string generate_phasing_results(std::vector<std::pair<std::string,std::vector<Interval>>> & first_cluster, std::vector<std::pair<std::string,std::vector<Interval>>> & second_cluster,
                                             std::vector<std::pair<std::string,std::vector<Interval>>> &noise_cluster , unsigned int CN_first, unsigned int CN_second, const std::string& region);
         std::vector<std::pair<uint32_t, uint32_t>> cut_read_in_TR_region(const  uint32_t reference_start,  uint32_t* cigar_data, size_t cigar_length,
                                                                         const std::vector<std::pair<uint32_t,uint32_t> > &tandem_runs);
@@ -364,7 +364,7 @@ public:
         
         void cluster_by_features(const std::string& chr, 
                                         std::vector<std::tuple<std::string, std::vector<Interval>, uint8_t>>& reads_intervals, 
-                                        std::vector<std::vector<std::tuple<std::string, std::vector<Interval>, std::string>>>  & clusters, 
+                                        std::vector<std::vector<std::pair<std::string, std::vector<Interval>>>> & clusters, 
                                         std::vector<std::pair<std::string, std::vector<Interval>>>& noise_cluster, 
                                         arma::mat &region_features, 
                                         uint16_t motif_size,
@@ -374,7 +374,7 @@ public:
                                             uint16_t matchScore, int16_t mismatchPenalty, int16_t gapPenalty, const std::vector<uint16_t> &lcp);
      
         // Reads Intervals Corrrection functions 
-        uint32_t correct_intervals(std::vector<std::tuple<std::string,std::vector<Interval>,std::string>>  &reads_cluster, const float consensus_range, const uint16_t motif_size, const std::unordered_map<std::string,std::string> &reads_sequences); 
+        uint32_t correct_intervals(std::vector<std::pair<std::string,std::vector<Interval>>>  &reads_cluster, const float consensus_range, const uint16_t motif_size, const std::unordered_map<std::string,std::string> &reads_sequences); 
         bool IsIntervalOnLeft(Interval &interval1, Interval &interval2);
 
         void print_intervals_in_cluster(std::vector<std::pair<std::string,std::vector<Interval>>>  &reads_cluster);
@@ -392,7 +392,7 @@ public:
         // phasing functions (consider putting them in a different class)
         std::tuple<std::vector<std::vector<uint16_t>>, std::vector<uint16_t>> runDBSCAN(const arma::mat &features_matrix_stdandarized,float eps, uint16_t minPts);
         void cluster_reads(arma::mat &region_features,std::vector<std::tuple<std::string,std::vector<Interval>,uint8_t>> &reads_intervals,
-                                                            std::vector<std::vector<std::tuple<std::string,std::vector<Interval>,std::string>>> &final_clusters ,
+                                                            std::vector<std::vector<std::pair<std::string,std::vector<Interval>>>> &final_clusters ,
                                                             std::vector<std::pair<std::string,std::vector<Interval>>> & noise_cluster,
                                                             uint16_t motif_length);
         arma::mat standardizeMatrix(arma::mat mmatrix);

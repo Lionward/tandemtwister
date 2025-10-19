@@ -107,7 +107,7 @@ std::tuple<std::vector<std::vector<uint16_t>>, std::vector<uint16_t>> TandemTwis
 }
 
 
-void TandemTwister::cluster_reads(arma::mat &region_features,std::vector<std::tuple<std::string,std::vector<Interval>,uint8_t>> &reads_intervals,std::vector<std::vector<std::tuple<std::string,std::vector<Interval>,std::string>>> & final_clusters , std::vector<std::pair<std::string,std::vector<Interval>>> & noise_cluster, uint16_t motif_length){
+void TandemTwister::cluster_reads(arma::mat &region_features,std::vector<std::tuple<std::string,std::vector<Interval>,uint8_t>> &reads_intervals,std::vector<std::vector<std::pair<std::string,std::vector<Interval>>>> & final_clusters , std::vector<std::pair<std::string,std::vector<Interval>>> & noise_cluster, uint16_t motif_length){
     std::vector<std::vector<uint16_t>> clusters;
     std::vector<uint16_t> noise;
     // std::cout << "The number of reads in the region " << region_features.n_rows << std::endl;
@@ -174,11 +174,7 @@ void TandemTwister::cluster_reads(arma::mat &region_features,std::vector<std::tu
             for (uint16_t i = 0; i < standardized_features.n_rows; ++i) {
                 auto read_name = std::get<0>(reads_intervals[i]);
                 auto read_intervals = std::get<1>(reads_intervals[i]);
-                std::string cluster_features = "";
-                for (uint16_t k = 4; k < standardized_features.n_cols; ++k) {
-                    cluster_features += fmt::format("{} ", region_features(i, k));
-                }
-                final_clusters[0].push_back(std::make_tuple(read_name, read_intervals,cluster_features));
+                final_clusters[0].push_back(std::make_pair(read_name, read_intervals));
             }
             return;
         }
@@ -234,15 +230,11 @@ void TandemTwister::cluster_reads(arma::mat &region_features,std::vector<std::tu
 
     // if all the reads are noise, add them to the first cluster
     if (clusters.empty()){
-        std::vector<std::tuple<std::string,std::vector<Interval>,std::string>> cluster_reads;
+        std::vector<std::pair<std::string,std::vector<Interval>>> cluster_reads;
         for (uint16_t i = 0; i< standardized_features.n_rows;++i){
             auto read_name = std::get<0>(reads_intervals[i]);
             auto read_intervals = std::get<1>(reads_intervals[i]);
-            std::string cluster_features = "";
-            for (uint16_t k = 4; k < region_features.n_cols; ++k) {
-                cluster_features += fmt::format("{} ", region_features(i, k));
-            }
-            cluster_reads.push_back(std::make_tuple(read_name, read_intervals, cluster_features));
+            cluster_reads.push_back(std::make_pair(read_name, read_intervals));
         }
         final_clusters.resize(2);
         final_clusters[0] = cluster_reads;
@@ -250,16 +242,11 @@ void TandemTwister::cluster_reads(arma::mat &region_features,std::vector<std::tu
     }
 
     for (uint16_t i = 0; i < clusters.size(); ++i) {
-        std::vector<std::tuple<std::string,std::vector<Interval>, std::string>> cluster_reads;
+        std::vector<std::pair<std::string,std::vector<Interval>>> cluster_reads;
         for (uint16_t j = 0; j < clusters[i].size(); ++j) {
             auto read_name = std::get<0>(reads_intervals[clusters[i][j]]);
             auto read_intervals = std::get<1>(reads_intervals[clusters[i][j]]);
-            std::string cluster_features = "";
-            for (uint16_t k = 4; k < region_features.n_cols; ++k) {
-                cluster_features += fmt::format("{} ", region_features(clusters[i][j], k));
-            }
-
-            cluster_reads.push_back(std::make_tuple(read_name, read_intervals,cluster_features));
+            cluster_reads.push_back(std::make_pair(read_name, read_intervals));
         }
         final_clusters.push_back(cluster_reads);
     }
@@ -275,7 +262,8 @@ void TandemTwister::cluster_reads(arma::mat &region_features,std::vector<std::tu
     std::sort(final_clusters.begin(), final_clusters.end(), [](auto  a, auto b) {
         return a.size() > b.size();
     });
-    
+
+
     if (clusters.size() > 2 && this->manual_reclustering && this->somatic == false) {
         spdlog::debug("Start manual reclustering ");
         std::vector<float> first_cluster_means(region_features.n_cols, 0.0);
@@ -291,11 +279,9 @@ void TandemTwister::cluster_reads(arma::mat &region_features,std::vector<std::tu
             auto& cluster = clusters[i];
 
             for (uint16_t j = 0; j < cluster.size(); ++j) {
-                // Accessing elements from a tuple requires std::get<N>(tuple)
-                auto& read_tuple = reads_intervals[cluster[j]];
-                auto& read_name = std::get<0>(read_tuple);
-                auto& read_intervals = std::get<1>(read_tuple);
-                auto& read_feature = std::get<2>(read_tuple);
+                auto& read_name = std::get<0>(reads_intervals[cluster[j]]);
+                auto& read_intervals = std::get<1>(reads_intervals[cluster[j]]);
+                
                 float avg_diff_first = 0.0;
                 float avg_diff_second = 0.0;
                 
@@ -319,16 +305,14 @@ void TandemTwister::cluster_reads(arma::mat &region_features,std::vector<std::tu
                 spdlog::debug("Average difference from second cluster: {}", avg_diff_second);
                 spdlog::debug("CN1 diff: {}", cn1_diff);
                 spdlog::debug("CN2 diff: {}", cn2_diff);
-                
-                
+
 
                 if (avg_diff_first <= avg_diff_second && cn1_diff <= max_allowed_cn_error) {
                     spdlog::debug("Adding  read to first cluster");
-                    
-                    final_clusters[0].emplace_back(read_name, read_intervals, std::string(1, read_feature));
+                    final_clusters[0].emplace_back(read_name, read_intervals);
                 } else if (avg_diff_second <= avg_diff_first && cn2_diff <= max_allowed_cn_error) {
                     spdlog::debug("Adding  read to second cluster");
-                    final_clusters[1].emplace_back(read_name, read_intervals, std::string(1, read_feature));
+                    final_clusters[1].emplace_back(read_name, read_intervals);
                 } else {
                     spdlog::debug("Error too high, adding to noise cluster");
                     noise_cluster.emplace_back(read_name, read_intervals);

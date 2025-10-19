@@ -267,41 +267,41 @@ void TandemTwister::print_0_1_matrix(std::vector<std::vector<uint32_t>> clustere
 
 
 
-uint32_t TandemTwister::correct_intervals(std::vector<std::tuple<std::string,std::vector<Interval>,std::string>>  &reads_cluster, const float consensus_range, const uint16_t motif_size, const std::unordered_map<std::string, std::string>& sequences){
+uint32_t TandemTwister::correct_intervals(std::vector<std::pair<std::string,std::vector<Interval>>>  &reads_cluster, const float consensus_range, const uint16_t motif_size, const std::unordered_map<std::string, std::string>& sequences){
     
     std::sort(reads_cluster.begin(), reads_cluster.end(), [](auto  a, auto b) {
-        return std::get<1>(a).size() > std::get<1>(b).size();
+        return a.second.size() > b.second.size();
     });
 
     // if there is only one read in the cluster then return the number of intervals in the read
     if (reads_cluster.size() == 1){
-        return std::get<1>(reads_cluster[0]).size();
+        return reads_cluster[0].second.size();
     }
 
     // if the most occuring copy number is 0 the return 0
-    if (std::get<1>(reads_cluster[0]).size() == 0){
+    if (reads_cluster[0].second.size() == 0){
         return 0;
     }
 
 
     // make the main read as the medien copy number (the main read here is the one with the most intervals)
-    std::string main_read = sequences.at(std::get<0>(reads_cluster[0]));
+    std::string main_read = sequences.at(reads_cluster[0].first);
     // this vector will hold the number of reads that overlap with each interval in the main read
-    std::vector<uint32_t> intervalsConsesus(std::get<1>(reads_cluster[0]).size(), 1); 
+    std::vector<uint32_t> intervalsConsesus(reads_cluster[0].second.size(), 1); 
     // this vector will hold the number of reads that is on the left of each interval in the main read
-    std::vector<uint32_t> left_intervals(std::get<1>(reads_cluster[0]).size(),0);
+    std::vector<uint32_t> left_intervals(reads_cluster[0].second.size(),0);
 
 
     std::string read = "";
 
     for(uint16_t i = 1; i < reads_cluster.size(); ++i){  
-        read = sequences.at(std::get<0>(reads_cluster[i]));
+        read = sequences.at(reads_cluster[i].first);
         if (read.size() == 0){
 
             continue;
         }
 
-        auto [ref_intervals, read_intervals] = needlemanWunsch(main_read, read, AlignmentScores{2, -7, -7, -1}, std::get<1>(reads_cluster[0]), std::get<1>(reads_cluster[i]));        
+        auto [ref_intervals, read_intervals] = needlemanWunsch(main_read, read, AlignmentScores{2, -7, -7, -1}, reads_cluster[0].second, reads_cluster[i].second);        
         uint32_t reads_intervals_idx = 0;
         uint32_t ref_intervals_idx = 0;
         Interval ref_interval = Interval();
@@ -363,21 +363,21 @@ uint32_t TandemTwister::correct_intervals(std::vector<std::tuple<std::string,std
     }
 
     spdlog::debug("removing intervals that are not passing the threshold");
-    spdlog::debug("number of main read intervals before removing: {}", std::get<1>(reads_cluster[0]).size());
+    spdlog::debug("number of main read intervals before removing: {}", reads_cluster[0].second.size());
     // remove the intervals that are not passing the threshold from the main read
-    std::get<1>(reads_cluster[0]).erase(
+    reads_cluster[0].second.erase(
         std::remove_if(
-            std::get<1>(reads_cluster[0]).begin(),
-            std::get<1>(reads_cluster[0]).end(),
+            reads_cluster[0].second.begin(),
+            reads_cluster[0].second.end(),
             [&](const Interval& interval) {
-                size_t index = &interval - &std::get<1>(reads_cluster[0])[0];
+                size_t index = &interval - &reads_cluster[0].second[0];
                 return intervalsConsesus[index] < consensus_range;
             }
         ),
-        std::get<1>(reads_cluster[0]).end()
+        reads_cluster[0].second.end()
     );
 
-    spdlog::debug("number of main read intervals after removing: {}", std::get<1>(reads_cluster[0]).size());
+    spdlog::debug("number of main read intervals after removing: {}", reads_cluster[0].second.size());
     return copy_number_total;
 
 }
