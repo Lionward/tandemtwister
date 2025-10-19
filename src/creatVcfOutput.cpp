@@ -488,16 +488,17 @@ void TandemTwister::writeRecordsToVcfAssembly(std::vector<vcfRecordInfoAssembly>
         }
 
         bcf_update_genotypes(this->vcf_header, vcf_record, tmpia, bcf_hdr_nsamples(this->vcf_header) *1);
-        std::string spanREF  = formatStringIntervals(recordInfo.motifs_intervals_ref);
-        std::string spanH = formatStringIntervals(recordInfo.motifs_intervals_allele);
+        std::string spanREF = formatStringIntervals(recordInfo.motifs_intervals_ref);
         if (spanREF.empty()){
             spanREF = ".";
         }
+        bcf_update_info_string(this->vcf_header,vcf_record, "REF_SPAN", spanREF.c_str());
+        std::string spanH = formatStringIntervals(recordInfo.motifs_intervals_allele);
+  
         if (spanH.empty()){
             spanH = ".";
         }
-        std::string span =  spanREF + "," + spanH;
-        const char* spans[1] = { span.c_str() };
+        const char* spans[1] = { spanH.c_str() };
         bcf_update_format_string(this->vcf_header,vcf_record,"SP", spans,bcf_hdr_nsamples(this->vcf_header)*1 );
         
 
