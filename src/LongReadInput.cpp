@@ -707,7 +707,11 @@ regionResult TandemTwister::processLongReads(samFile* &fp, hts_itr_t* &iter,cons
             length = 0;
         }
 
-
+        if (path_total.empty()) {
+            // remove the read from the reads_sequences
+            reads_sequences.erase(read_name);
+            continue;
+        }
         // store the read intervals
         reads_intervals.emplace_back(std::make_tuple(read_name, path_total,hp_value));
 
