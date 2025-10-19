@@ -184,6 +184,7 @@ std::vector<std::string> TandemTwister::process_chunk_assembly(const std::vector
             std::cerr << "Error: bam_get_seq returned nullptr\n";
             exit(1);
         }
+        
         std::unordered_map<unsigned int , unsigned int> ref_to_read =  process_contig(reference_start,cigar_data , reads->core.n_cigar,reads->core.pos + reads->core.l_qseq);
         unsigned int seq_length = reads->core.l_qseq; // get the sequence length
         auto qseq = std::make_unique<char[]>(seq_length+1);
@@ -198,7 +199,6 @@ std::vector<std::string> TandemTwister::process_chunk_assembly(const std::vector
             std::tie(chr, start, end) = parse_region(chunk,regions_idx);  
             start_pos = std::stoi(start); //+  - this->padding
             end_pos = std::stoi(end); //+ this->padding;
-            
             if (start_pos == end_pos || end_pos < start_pos ) {
                 // std::cerr << "WARNING: The start and end positions are the same in region " << chr << ":" << start_pos << "-" << end_pos << std::endl;
                 ++regions_idx;
@@ -206,8 +206,11 @@ std::vector<std::string> TandemTwister::process_chunk_assembly(const std::vector
             }
             // check if the start and end position are already in the ref_to_read dictionary, in this case we can cut the read from the contig(only accept if the region is completely covered by the read)
             if (ref_to_read.find(start_pos)  != ref_to_read.end() && ref_to_read.find(end_pos) != ref_to_read.end()){ 
+                spdlog::info("Processing region: {}:{}-{}", chr, start_pos, end_pos);
+
                 start_pos_in_contig = ref_to_read[start_pos];
                 end_pos_in_contig = ref_to_read[end_pos];
+   
                 std::string cut_read(qseq.get() + start_pos_in_contig -1, end_pos_in_contig - start_pos_in_contig +1);
                 if (this-> keep_cut_sequence){
                     // get the region, read name and the cut read sequence
@@ -226,7 +229,10 @@ std::vector<std::string> TandemTwister::process_chunk_assembly(const std::vector
 
                 std::vector<std::string> motifs_str = std::get<1>(chunk[regions_idx]);
                 const std::vector<uint16_t> lcp_motifs = computeLCP(motifs_str);
+
+             
                 path = findBestPath(cut_read, motifs_str, match_score, mismatch_score, gap_score, lcp_motifs);
+          
                 std::string motifs_strs = "";
                 for (uint16_t i = 0; i < motifs_str.size(); ++i) {
                     if (i == motifs_str.size() - 1) {
@@ -246,17 +252,17 @@ std::vector<std::string> TandemTwister::process_chunk_assembly(const std::vector
                     continue;
                 }
                 //std::unordered_map<char, uint16_t> nucleotides_occurences_reference;
-                
                 auto path_reference = findBestPath(ref_seq, motifs_str, match_score, mismatch_score, gap_score, lcp_motifs);
                 int16_t ref_CN = path_reference.size();
                 if (ref_CN == 0) {
-                    std::cerr << "Unexpected behavior: no motif was found in the reference sequence for region " << chr << ":" << start_pos << "-" << end_pos << std::endl;
+                    spdlog::warn("Unexpected behavior: no motif was found in the reference sequence for region {}:{}-{}", chr, start_pos, end_pos);
                     ++regions_idx;
                     continue;
                 }
                 
                 std::vector<uint16_t> motif_occurrences_allele = get_motif_ids(path);
                 std::vector<uint16_t> motif_occurrences_ref = get_motif_ids(path_reference);
+    
                 std::vector<std::string> motifs_span_allele = {};
                 std::vector<std::string> motifs_span_ref = {};
 
@@ -354,21 +360,11 @@ void TandemTwister::processRegionsForAssemblyInput() {
                     
 
                     results_chunk = process_chunk_assembly(chunkElement_vector, chromosome, idx, h, fp, fai, chunk_genotype_records, cut_reads_fasta);
-                    std::string genotype_file_chunk = this->output_path + "genotype_" + this->sampleName + "_" + chromosome + ".tsv";
                     std::string vcf_file_chunk = this->output_path + this->sampleName + "_" + chromosome + ".vcf";
-                    std::string cut_reads_file_chunk = this->output_path + "cut_reads_" + this->sampleName + "_" + chromosome + ".fasta";
 
-                    std::ofstream infile(genotype_file_chunk);
-                    if (!infile.is_open()) {
-                        std::cerr << "Failed to open inlinefile " << genotype_file_chunk << std::endl;
-                        return;
-                    }
- 
-                    
-                    for (const std::string& result : results_chunk) {
-                        infile << result;
-                    }
-                    
+     
+                    std::string cut_reads_file_chunk = this->output_path + "cut_reads_" + this->sampleName + "_" + chromosome + ".fasta";
+  
                     if (this->keep_cut_sequence){
                         std::ofstream infile_cutReads(cut_reads_file_chunk);
                         if (!infile_cutReads.is_open()) {
@@ -378,7 +374,6 @@ void TandemTwister::processRegionsForAssemblyInput() {
                         infile_cutReads << cut_reads_fasta;
                         infile_cutReads.close();
                     }
-
                     writeRecordsToVcfAssembly(chunk_genotype_records, vcf_file_chunk);
 
                     
@@ -458,12 +453,7 @@ void TandemTwister::processRegionsForAssemblyInput() {
                 exit(1);
             }
         }
-        std::string genotype_file_chunk = this->output_path + "genotype_" + this->sampleName + "_" + chromosome + ".tsv";
-        std::ifstream infile(genotype_file_chunk);
-        if (!infile.is_open()) {
-            std::cerr << "Failed to open inlinefile  " << genotype_file_chunk << " results of process " << i << " will be skipped" << std::endl;
-            exit(1);
-        }
+ 
         std::string phasing_file_chunk = this->output_path + "phasing_" + this->sampleName + "_" + chromosome + ".tsv";
         std::ifstream infile_phasing(phasing_file_chunk);
         if (this->keep_phasing_results){
@@ -506,18 +496,13 @@ void TandemTwister::processRegionsForAssemblyInput() {
         std::stringstream buffer;
         buffer << infile_cutReads.rdbuf();
         cut_reads_fasta += buffer.str();
-        std::stringstream buffer2;
-        buffer2 << infile.rdbuf();
-        genotype_result += buffer2.str();
         std::stringstream buffer3;
         buffer3 << infile_phasing.rdbuf();
         phasing_result += buffer3.str();
         std::stringstream buffer4;
         infile_cutReads.close();
-        infile.close();
         infile_phasing.close();
         std::remove(cut_reads_file_chunk.c_str());
-        std::remove(genotype_file_chunk.c_str());
         std::remove(phasing_file_chunk.c_str());
         std::remove(vcf_file_chunk.c_str());
     }
