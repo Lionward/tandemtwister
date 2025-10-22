@@ -147,7 +147,7 @@ void printFullDoc(){
     std::cerr << "\t -kcr, --keepCutReads                     keep cut reads (Default: false)"  << std::endl;
     std::cerr << "\t -minR, --minReadsInRegion                minimum number of reads that should span the region (Default: 2)" << std::endl;
     std::cerr << "\t -btg, --bamIsTagged                      reads in bam are phased (Default: false)" << std::endl;
-    std::cerr << "\t -qs, --quality_score                     minimum quality score for a read to be considered (Default: 20 , Max:60)" << std::endl;
+    std::cerr << "\t -qs, --quality_score                     minimum quality score for a read to be considered (Default: 10 , Max:60)" << std::endl;
     std::cerr << std::endl;
 
     std::cerr << "\t Correction parameters:" << std::endl;

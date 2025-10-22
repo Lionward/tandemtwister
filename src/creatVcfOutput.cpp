@@ -362,7 +362,7 @@ void TandemTwister::writeRecordsToVcf(std::vector<vcfRecordInfoReads> & recordsI
             }
         }
         if (span.empty()){
-            span = "";
+            span = ".";
         }
 
     

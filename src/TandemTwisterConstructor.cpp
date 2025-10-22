@@ -181,7 +181,7 @@ TandemTwister::TandemTwister(int argc, char *argv[]) {
     this->num_threads = getArg<uint32_t>(args, "-t", "--threads", 1);
     this->minReadsInRegion = getArg<uint16_t>(args, "-minR", "--minReadsInRegion", 4);
     this->bamIsTagged = getArg<bool>(args, "-btg", "--bamIsTagged", false);
-    this->quality_score = getArg<uint16_t>(args, "-qs", "--quality_score", 20);
+    this->quality_score = getArg<uint16_t>(args, "-qs", "--quality_score", 10);
     if (this->quality_score > 60 ) {
         std::cerr << "Error: quality score should be less than 60, it is capped at 60" << std::endl;
         this->quality_score = 60;
