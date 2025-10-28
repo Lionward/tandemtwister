@@ -296,12 +296,20 @@ void TandemTwister::writeRecordsToVcf(std::vector<vcfRecordInfoReads> & recordsI
             mi_str = motif_ids_h1.c_str();
             // chekc if the motifs intervals are the same
             std::string motif_ids = "";
-            if (sorted_motifs_intervals_alleles[0] == sorted_motifs_intervals_alleles[1]){
+            if ((motif_ids_h1 == motif_ids_h2)){ //(sorted_motifs_intervals_alleles[0] == sorted_motifs_intervals_alleles[1]) && 
+                // visualize the motifs intervals
+
+                std::string motifs_intervals = formatStringIntervals(sorted_motifs_intervals_alleles[0]);
+                std::string motifs_intervals_h2 = formatStringIntervals(sorted_motifs_intervals_alleles[1]);
+                spdlog::info("motif_ids_h1: {} and motif_ids_h2: {}", motif_ids_h1, motif_ids_h2);
+                spdlog::info("motifs_intervals: {} and motifs_intervals_h2: {}", motifs_intervals, motifs_intervals_h2);
                 homozygous = true;
                 motif_ids = motif_ids_h1;
+                spdlog::info("region: {} is: homozygous", recordInfo.region);
             }
             else{
                 motif_ids = motif_ids_h1 + "," + motif_ids_h2;
+                spdlog::info("region: {} is: heterozygous", recordInfo.region);
             }
             mi_str = motif_ids.c_str();
             if (motif_ids.empty()){
