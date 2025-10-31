@@ -39,13 +39,23 @@
 
 <!-- TABLE OF CONTENTS -->
 ## Table of Contents
-- [TandemTwister](#TandemTwister)
-- [Requirements](#Requirements)
-- [Installation](#installation)
+- [Introducing TandemTwister](#introducing-tandemtwister)
+- [Key features](#key-features)
+- [Visualization Tool: ProleTRact](#visualization-tool-proletract)
+- [Requirements](#requirements)
+- [Installation](#-installation)
 - [Usage](#usage)
+  - [Required Input](#required-input)
+  - [Dynamic Programming Alignment Parameters](#dynamic-programming-alignment-parameters)
+  - [Germline & Somatic Analysis Options](#germline--somatic-analysis-options)
+  - [Help](#help)
+  - [Example](#example)
+- [VCF INFO and FORMAT Field Descriptions](#vcf-info-and-format-field-descriptions)
+- [Example Output](#example-output)
+- [Test data](#test-data)
 - [Contributions](#contributions)
-- [License](#license)
-- [Upcoming Features](#UpcomingFeatures)
+- [Upcoming Features](#upcomingfeatures)
+- [Acknowledgements](#acknowledgements)
 
 
 
@@ -66,7 +76,7 @@
 3. Noise Correction for Short Motifs: TandemTwister includes specialized correction mechanisms for short motifs (≤3) in CLR and ONT reads, ensuring robust and accurate genotyping results in the presence of noisy data.
 
 4. Speed and Scalability: Optimized for efficiency, TandemTwister supports multi-processing and can complete genotyping analyses for approximately 1.2 Mio regions in under 20 minutes.
-## Visualization Tool: PRoleTRact
+## Visualization Tool: ProleTRact
 
 TandemTwister comes with a companion visualization tool, [**ProleTRact**](https://github.com/Lionward/ProleTRact), which enables interactive exploration and visualization of genotyped tandem repeats. After running TandemTwister, you can use PRoleTRact to visulize the regions you're analyzing.  
 - For more information and usage instructions, visit the [ProleTRact repository](https://github.com/Lionward/ProleTRact).
@@ -125,26 +135,12 @@ If you only want to build the executable in the current directory, just use:
 make
 ```
 
-<div align="center" style="margin-top:16px;">
-  
-  <img src="https://img.shields.io/badge/Installation%20Complete-✔️-success?style=flat-square">
-
-</div>
-
 <!-- Usage -->
-# Usage
+## Usage
 
 To use the TandemTwister run the desired commands within the activated environment.
-<h1>TandemTwister</h1>
 
-<p><strong>TandemTwister</strong> is a tool for genotyping tandem repeats from long reads and aligned genome input.</p>
-
-<h2>Usage</h2>
-
-
-<hr />
-
-<h2>Required Input</h2>
+### Required Input
 
 <ol>
   <li>
@@ -169,18 +165,15 @@ To use the TandemTwister run the desired commands within the activated environme
   </li>
 </ol>
 
-<hr />
+### Dynamic Programming Alignment Parameters
 
-<h2>Dynamic Programming Alignment Parameters</h2>
 <ul>
   <li><code>-mml, --min_match_ratio_l</code>: Minimum match ratio for long motifs (Default: 0.5)</li>
 </ul>
 
-<hr />
+### Germline &amp; Somatic Analysis Options
 
-<h2>Germline &amp; Somatic Analysis Options</h2>
-
-<h3>Read Extraction Parameters</h3>
+#### Read Extraction Parameters
 <ul>
   <li><code>-h, --help</code>: Show help message</li>
   <li><code>-s, --output_file_statistics</code>: Output file containing phasing info &amp; consensus CN call for each region</li>
@@ -191,9 +184,9 @@ To use the TandemTwister run the desired commands within the activated environme
   <li><code>-minR, --minReadsInRegion</code>: Minimum number of reads that should span the region (Default: 2)</li>
   <li><code>-btg, --bamIsTagged</code>: Reads in BAM are phased (Default: false)</li>
   <li><code>-qs, --quality_score</code>: Minimum quality score for a read to be considered (Default: 10, Max: 60)</li>
-</ul>
+  </ul>
 
-<h3>Correction Parameters</h3>
+#### Correction Parameters
 <ul>
   <li><code>-cor, --correct</code>: Perform genotype calling correction (CCS Default: false, CLR/ONT Default: true)</li>
   <li><code>-crs, --consensus_ratio_str</code>: Min fraction of reads in a cluster that must call an interval (STR) (Default: 0.3)</li>
@@ -202,7 +195,7 @@ To use the TandemTwister run the desired commands within the activated environme
   <!-- <li><code>-rtr, --refineTrRegions</code>: Refine tandem repeat regions (Default: true)</li> -->
 </ul>
 
-<h3>Clustering Parameters</h3>
+#### Clustering Parameters
 <ul>
   <li><code>-seps, --start_eps_str</code>: Start radian for clustering in STR regions (Default: 0.2)</li>
   <li><code>-sepv, --start_eps_vntr</code>: Start radian for clustering in VNTR regions (Default: 0.2)</li>
@@ -212,17 +205,12 @@ To use the TandemTwister run the desired commands within the activated environme
   <li><code>-ci, --cluster_iter</code>: Number of iterations for clustering (Default: 20)</li>
 </ul>
 
-<hr />
-
-<h2>Help</h2>
+### Help
 <ul>
   <li><code>-h, --help</code>: Print help message</li>
 </ul>
 
-<hr />
-
-
-<p><strong>Example:</strong></p>
+### Example
 <pre><code>
 TandemTwister --germline \
   -b sample.bam \
@@ -311,12 +299,12 @@ run the following command to test the tool. NOTICE: For running please add the r
   make test
 ```
 
-# Contributions
+## Contributions
 
 We welcome contributions from the community! If you find any issues or have suggestions for improvement, please [open an issue](https://github.com/Lionward/tandemtwister/issues) or create a pull request.
 
 
-# UpcomingFeatures
+## UpcomingFeatures
 1.  Implementation of a Lookup Table for ONT Input Acceleration:
       Integrate a lookup table for ONT input to enhance processing speed, optimizing the tool's performance.
 
@@ -328,7 +316,7 @@ We welcome contributions from the community! If you find any issues or have sugg
 
 <!-- Acknowledgements -->
 
-# Acknowledgements
+## Acknowledgements
 
 We would like to express our appreciation to the IT team at Max Planck Institute for Molecular Genetics for their support with technical aspects related to this project.
 
