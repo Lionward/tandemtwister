@@ -75,13 +75,17 @@ std::unordered_map<unsigned int, unsigned int> TandemTwister::process_contig(siz
             case 7: // sequence match
             case 8: // mismatch
                 for (size_t j = 0; j < cigar_length; ++j) {
+                    // check if the current reference position is already in the ref_to_read dictionary if then skip the current reference position
+                    if (ref_to_read.find(current_ref_position + j) != ref_to_read.end()) {
+                        continue;
+                    }
                     ref_to_read[current_ref_position + j] = current_read_position + j;
                 }
                 current_ref_position += cigar_length;
                 current_read_position += cigar_length;
                 break;
             case 1: // insertion
-                ref_to_read[current_ref_position] = current_read_position + cigar_length;
+                ref_to_read[current_ref_position] = current_read_position;
                 current_read_position += cigar_length;
                 break;
             case 3: // skipped region
@@ -90,6 +94,9 @@ std::unordered_map<unsigned int, unsigned int> TandemTwister::process_contig(siz
                 break;
             case 2: // deletion
                 for (size_t j = 0; j < cigar_length; ++j) {
+                    if (ref_to_read.find(current_ref_position + j) != ref_to_read.end()) {
+                        continue;
+                    }
                     ref_to_read[current_ref_position + j] = current_read_position;
                 }
                 current_ref_position += cigar_length;
@@ -197,10 +204,10 @@ std::vector<std::string> TandemTwister::process_chunk_assembly(const std::vector
         std::string read_name = bam_get_qname(reads);
         while (regions_idx < chunk.size()){
             std::tie(chr, start, end) = parse_region(chunk,regions_idx);  
-            start_pos = std::stoi(start); //+  - this->padding
-            end_pos = std::stoi(end); //+ this->padding;
+            start_pos = std::stoi(start) -this->padding; 
+            end_pos = std::stoi(end) + this->padding; 
             if (start_pos == end_pos || end_pos < start_pos ) {
-                // std::cerr << "WARNING: The start and end positions are the same in region " << chr << ":" << start_pos << "-" << end_pos << std::endl;
+                spdlog::warn("WARNING: The start and end positions are the same or the end position is smaller than the start position in region {}:{}-{}", chr, start_pos, end_pos);
                 ++regions_idx;
                 continue;
             }
@@ -210,8 +217,19 @@ std::vector<std::string> TandemTwister::process_chunk_assembly(const std::vector
 
                 start_pos_in_contig = ref_to_read[start_pos];
                 end_pos_in_contig = ref_to_read[end_pos];
-   
+                // check if there is an insertion at the start_pos -1 position by comparing it to start_pos
+                if (ref_to_read.find(start_pos -1) != ref_to_read.end()) {
+                    if ((start_pos_in_contig - ref_to_read[start_pos -1]) != 1) {
+                        start_pos_in_contig = ref_to_read[start_pos -1];
+                        spdlog::warning("Insertion at the start_pos -1 position found, new start position in contig: {}", start_pos_in_contig);
+                    }
+
+                }
+                spdlog::debug("Start position in contig: {}", start_pos_in_contig);
+                spdlog::debug("End position in contig: {}", end_pos_in_contig);
                 std::string cut_read(qseq.get() + start_pos_in_contig -1, end_pos_in_contig - start_pos_in_contig +1);
+                spdlog::debug("Cut read: {}", cut_read); 
+                spdlog::debug("--------------------------------");
                 if (this-> keep_cut_sequence){
                     // get the region, read name and the cut read sequence
                     cut_reads_fasta +=  ">" + chr + ":" + std::to_string(start_pos) + "-" + std::to_string(end_pos)  + "_" + read_name +"\n" +  cut_read + "\n";
