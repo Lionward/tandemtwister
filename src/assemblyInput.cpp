@@ -221,7 +221,7 @@ std::vector<std::string> TandemTwister::process_chunk_assembly(const std::vector
                 if (ref_to_read.find(start_pos -1) != ref_to_read.end()) {
                     if ((start_pos_in_contig - ref_to_read[start_pos -1]) != 1) {
                         start_pos_in_contig = ref_to_read[start_pos -1];
-                        spdlog::warning("Insertion at the start_pos -1 position found, new start position in contig: {}", start_pos_in_contig);
+                        spdlog::warn("Insertion at the start_pos -1 position found, new start position in contig: {}", start_pos_in_contig);
                     }
 
                 }

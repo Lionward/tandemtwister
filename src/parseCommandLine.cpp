@@ -18,10 +18,10 @@ bool TandemTwister::openFile(const std::string& filename) {
 
 void printVersion(){
     std::cerr << "TandemTwister: A tool for genotyping tandem repeats from long reads and aligned genome input" << std::endl;
-    std::cerr << "Version: 2.0.1" << std::endl;
+    std::cerr << "Version: 1.0.0" << std::endl;
     std::cerr << "Author: Lion Ward Al Raei " << std::endl;
     std::cerr << "Email: Lionward.alraei@gmail.com " << std::endl;
-    std::cerr << "Institue:  (Max Planck institute for molecular genetics)" << std::endl;
+    std::cerr << "Institue: (Max Planck institute for molecular genetics)" << std::endl;
     std::cerr << std::endl;
 }
 
