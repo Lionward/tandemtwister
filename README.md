@@ -66,6 +66,11 @@
 3. Noise Correction for Short Motifs: TandemTwister includes specialized correction mechanisms for short motifs (≤3) in CLR and ONT reads, ensuring robust and accurate genotyping results in the presence of noisy data.
 
 4. Speed and Scalability: Optimized for efficiency, TandemTwister supports multi-processing and can complete genotyping analyses for approximately 1.2 Mio regions in under 20 minutes.
+## Visualization Tool: PRoleTRact
+
+TandemTwister comes with a companion visualization tool, [**ProleTRact**](https://github.com/Lionward/ProleTRact), which enables interactive exploration and visualization of genotyped tandem repeats. After running TandemTwister, you can use PRoleTRact to visulize the regions you're analyzing.  
+- For more information and usage instructions, visit the [ProleTRact repository](https://github.com/Lionward/ProleTRact).
+
 
     
 <!-- Requirenments -->
@@ -73,47 +78,59 @@
 
 TandemTwister requires the following tools:
 
-- `g++` (GCC) version 14.2.0 or later
+- `g++` (GCC) version 14.3.0 or later
 - `GNU Make` version 4.4 or later
 - `conda` version 22.11.1 or later
   
 Please ensure that you have these tools installed and available in your PATH before proceeding with the build process.
 
 <!-- Installation -->
-## Installation
+## 🛠️ Installation
 
-1. start by cloning the Github repository
-```bash
-  git clone https://github.com/Lionward/TandemTwist.git
-  cd TandemTwister
-  ```
+Follow these steps to install **TandemTwister**.
 
-2. Create a new Conda environment:
+### 1. Clone the repository
 ```bash
-   mamba create -n TandemTwist
-   ```
-3. Activate the newly created environment:
-```bash
-  mamba activate TandemTwist
-  ```
-3. Install libdeflate:
-```bash
-  mamba install -c conda-forge libdeflate=1.21
-  ```
-4. Install HTSLIB
-```bash
-   mamba install htslib=1.21
-  ```
-5. Install mlpack
-```bash
-   mamba  install mlpack==4.2.1
-  ```
-6. run make  to install TandemTwister in your /usr/local/bin
-```bash
-   make install
+git clone https://github.com/Lionward/TandemTwist.git
+cd TandemTwister
 ```
-  Alternatively you can just run `make`, and the Image file will be created in the same directory.
- 
+
+### 2. Create and activate a Conda (recommended: Mamba) environment
+```bash
+mamba create -n TandemTwist
+mamba activate TandemTwist
+```
+
+### 3. Install dependencies
+> **Tip:** All dependencies can be installed using _mamba_ for speed, but regular _conda_ also works.
+
+```bash
+mamba install -c conda-forge libdeflate=1.21
+mamba install htslib=1.22.1
+mamba install mlpack=4.5.0
+mamba install spdlog=1.15.3
+mamba install make=4.4.1
+mamba install gxx=14.3.0
+mamba install cereal=1.3.2
+```
+
+### 4. Build and install TandemTwister
+
+To install TandemTwister in `/usr/local/bin`:
+```bash
+make install
+```
+If you only want to build the executable in the current directory, just use:
+```bash
+make
+```
+
+<div align="center" style="margin-top:16px;">
+  
+  <img src="https://img.shields.io/badge/Installation%20Complete-✔️-success?style=flat-square">
+
+</div>
+
 <!-- Usage -->
 # Usage
 
@@ -134,6 +151,7 @@ To use the TandemTwister run the desired commands within the activated environme
     <strong>Analysis Type</strong>
     <ul>
       <li><code>--germline</code> / <code>--somatic</code> / <code>--assembly</code>: Type of analysis to perform.</li>
+      <p><span style="color: #e6b800; font-size: 1.3em;">&#9888;&#65039;</span> <strong>Warning:</strong> <em>Somatic mode is still experimental and has not been fully tested. Use with caution.</em></p>
     </ul>
   </li>
   <li>
@@ -203,6 +221,7 @@ To use the TandemTwister run the desired commands within the activated environme
 
 <hr />
 
+
 <p><strong>Example:</strong></p>
 <pre><code>
 TandemTwister --germline \
@@ -218,12 +237,68 @@ TandemTwister --germline \
 
 
 
+<h2>VCF INFO and FORMAT Field Descriptions</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Field</th>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>REF_SPAN</code></td>
+      <td>INFO</td>
+      <td>Span intervals of the tandem repeat (TR) on the reference sequence.</td>
+    </tr>
+    <tr>
+      <td><code>MOTIF_IDs_REF</code></td>
+      <td>INFO</td>
+      <td>Motif IDs for the reference sequence, representing identifiers for each unique motif in the reference.</td>
+    </tr>
+    <tr>
+      <td><code>CN_ref</code></td>
+      <td>INFO</td>
+      <td>Number of repeat units (copy number) for the tandem repeat region in the reference sequence.</td>
+    </tr>
+    <tr>
+      <td><code>CN</code></td>
+      <td>FORMAT</td>
+      <td>Copy number of the TR for each called allele in the sample.</td>
+    </tr>
+    <tr>
+      <td><code>MI</code></td>
+      <td>FORMAT</td>
+      <td>Motif IDs for the haplotype(s) of each allele in the sample.</td>
+    </tr>
+    <tr>
+      <td><code>SP</code></td>
+      <td>FORMAT</td>
+      <td>Span of the TR for each allele (as intervals on the reference sequence for that allele).</td>
+    </tr>
+    <tr>
+      <td><code>DP</code></td>
+      <td>FORMAT</td>
+      <td>Number of reads supporting each allele; in germline calling, this is per haplotype/allele.</td>
+    </tr>
+    <tr>
+      <td><code>GT</code></td>
+      <td>FORMAT</td>
+      <td>Genotype; indicates which alleles are present for this sample (e.g., <code>0/1</code>).</td>
+    </tr>
+  </tbody>
+</table>
+
+
+
 ## Example Output
 
 Below is an example of the output in VCF format:
 
 ```vcf
-chr1    60637   chr1:60636-60665        ATTGTAAAGTCAAACAATTATAAGTCAAAC  ATTGTAAAGTCAAACAATTATAAGTCAAAC  1       PASS    TR_type=VNTR;MOTIFS=AATTATAAGTCAAAC,ATTGTAAAGTCAAAC,AATTGTAAGTCAAAC,TTGTAAAGTCAAAC,AATTATAAGTCAAA;MOTIF_IDs_REF=1,0;MOTIF_IDs_H1=1,0;MOTIF_IDs_H2;UNIT_LENGTH=14;CN_H1=2;CN_H2=2;CN_ref=2   GT:DP:SP        0/1:31,0:(1-15)_(16-30),(1-15)_(16-30),(1-15)_(16-30)
+chr1    60637   chr1:60636-60665        ATTGTAAAGTCAAACAATTATAAGTCAAAC  ATTGTAAAGTCAAACAATTATAAGTCAAAC,ATTGTAAAGTCAAACAATTATAAGTCAAAC   1       PASS    TR_type=VNTR;MOTIFS=AATTATAAGTCAAA,AATTATAAGTCAAAC,AATTGTAAGTCAAAC,ATTGTAAAGTCAAAC,TTGTAAAGTCAAAC;UNIT_LENGTH_AVG=14;MOTIF_IDs_REF=3_1;REF_SPAN=(1-15)_(16-30);CN_ref=2 GT:CN:MI:DP:SP  0/0:2,2:3_1:31:(1-15)_(16-30)
 
 ```
 <!-- Contributions -->
@@ -238,7 +313,7 @@ run the following command to test the tool. NOTICE: For running please add the r
 
 # Contributions
 
-We welcome contributions from the community. If you find any issues or have suggestions for improvement, please open an issue or create a pull request.
+We welcome contributions from the community! If you find any issues or have suggestions for improvement, please [open an issue](https://github.com/Lionward/tandemtwister/issues) or create a pull request.
 
 
 # UpcomingFeatures
@@ -247,6 +322,8 @@ We welcome contributions from the community. If you find any issues or have sugg
 
 2.  Inclusion of Methylation Information:
       Integrate methylation information into the analysis, providing users with additional insights into the epigenetic characteristics of the tandem repeats.
+
+3. Add Trio-analysis mode for better genotyping results in Trio samples.
 
 
 <!-- Acknowledgements -->
