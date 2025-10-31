@@ -21,7 +21,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
- <img width="443" alt="grafik" src="https://github.com/user-attachments/assets/77776774-3ff6-4b22-8d78-bcb09bf1ceb5">
+ <img width="443" alt="grafik" src="logo_tandemtwister.svg">
 
   </p>
 </div>
