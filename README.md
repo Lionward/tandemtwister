@@ -83,16 +83,7 @@ TandemTwister comes with a companion visualization tool, [**ProleTRact**](https:
 
 
     
-<!-- Requirenments -->
-## Requirements
 
-TandemTwister requires the following tools:
-
-- `g++` (GCC) version 14.3.0 or later
-- `GNU Make` version 4.4 or later
-- `conda` version 22.11.1 or later
-  
-Please ensure that you have these tools installed and available in your PATH before proceeding with the build process.
 
 <!-- Installation -->
 ## 🛠️ Installation
@@ -112,13 +103,17 @@ mamba activate TandemTwist
 ```
 
 ### 3. Install dependencies
+  
+Please ensure that you have these tools installed and available in your PATH before proceeding with the build process.
+
 > **Tip:** All dependencies can be installed using _mamba_ for speed, but regular _conda_ also works.
 
 ```bash
 mamba install -c conda-forge libdeflate=1.21
 mamba install htslib=1.22.1
 mamba install mlpack=4.5.0
-mamba install spdlog=1.15.3
+> **Note:**  
+> Before building TandemTwister, please ensure all required tools are installed and available in your `PATH`.
 mamba install make=4.4.1
 mamba install gxx=14.3.0
 mamba install cereal=1.3.2
