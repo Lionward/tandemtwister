@@ -60,4 +60,4 @@ install: TandemTwister
 
 test : tandemtwister
 	@echo "Running tests"
-	@./tandemtwister -b test/example.bam -r test/hg38.fa  -o test/test_sample -m test/example_tr_regions.bed -sn test -bt reads -t 1  -s 0
+	@./tandemtwister --germline -b test/example.bam -r test/ref_test.fa  -o test/test_sample -m test/example_tr_regions.bed -sn test -rt CCS -t 1  -s 0
