@@ -31,9 +31,9 @@
   <p>TandemTwister is a fast tool for tandem repeat genotyping!</p>
   <p>
     ·
-    <a href="https://github.com/Lionward/TandemTwist/issues">Report Bug</a>
+    <a href="https://github.com/Lionward/TandemTwister/issues">Report Bug</a>
     ·
-    <a href="https://github.com/Lionward/TandemTwist/pulls">Request Feature</a>
+    <a href="https://github.com/Lionward/TandemTwister/pulls">Request Feature</a>
   </p>
 </div>
 
