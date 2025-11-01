@@ -298,6 +298,18 @@ run the following command to test the tool. NOTICE: For running please add the r
 
 We welcome contributions from the community! If you find any issues or have suggestions for improvement, please [open an issue](https://github.com/Lionward/tandemtwister/issues) or create a pull request.
 
+## Citation
+
+If you use TandemTwister in your research or analysis, please cite our work as follows:
+
+> **TandemTwister: A fast accurate tool for genotyping tandem repeats**  
+> Al Raei L, Ghareghani M 
+> [GitHub Repository](https://github.com/Lionward/tandemtwister)  
+> (Manuscript in preparation)
+
+Once our manuscript is published, we will update this section with the official citation.  
+Thank you for acknowledging TandemTwister in your work!
+
 
 ## UpcomingFeatures
 1.  Implementation of a Lookup Table for ONT Input Acceleration:
