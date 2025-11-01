@@ -259,12 +259,12 @@ TandemTwister --germline \
     <tr>
       <td><code>SP</code></td>
       <td>FORMAT</td>
-      <td>Span of the TR for each allele (as intervals on the reference sequence for that allele).</td>
+      <td>Span of the TR for each allele.</td>
     </tr>
     <tr>
       <td><code>DP</code></td>
       <td>FORMAT</td>
-      <td>Number of reads supporting each allele; in germline calling, this is per haplotype/allele.</td>
+      <td>Number of reads supporting each allele.</td>
     </tr>
     <tr>
       <td><code>GT</code></td>
