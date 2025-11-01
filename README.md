@@ -288,7 +288,7 @@ chr1    60637   chr1:60636-60665        ATTGTAAAGTCAAACAATTATAAGTCAAAC  ATTGTAAA
 
 ## test data
 The test data is available in the test_data folder. The test data is in the form of a bam file, a reference file, and a motif file. The motif file is in the form of a bed file. The test data can be used to test the TandemTwister tool.
-run the following command to test the tool. NOTICE: For running please add the reference file to the test folder and name it hg38.fa
+run the following command to test the tool.
 
 ```bash
   make test
