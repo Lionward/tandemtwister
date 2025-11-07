@@ -301,7 +301,7 @@ void printFullDoc(const std::string& activeCommand) {
     printVersion();
 
     printSectionHeader("Usage");
-    printOption("tandemtwister [global options] <command> [command options]", "Run TandemTwister in the selected analysis mode.");
+    printOption("tandemtwister [global options] <command> [command options]", "");
 
     printCommandsOverview(activeCommand);
 
