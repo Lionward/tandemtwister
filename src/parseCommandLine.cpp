@@ -1,4 +1,75 @@
 #include "include/TandemTwister.hpp"
+#include <algorithm>
+#include <cctype>
+#include <iomanip>
+#include <array>
+#include <unordered_set>
+#include <unordered_map>
+
+namespace {
+
+constexpr int kOptionColumnWidth = 48;
+
+struct CommandInfo {
+    const char* name;
+    const char* description;
+};
+
+const std::array<CommandInfo, 3> kCommandInfos = {{
+    {"germline", "Genotyping tandem repeats from long-read alignments."},
+    {"somatic",  "Somatic expansion profiling using long-read alignments."},
+    {"assembly", "Genotyping tandem repeats from aligned assembly input."}
+}};
+
+std::string toLower(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return value;
+}
+
+void printDivider() {
+    std::cerr << std::string(80, '-') << std::endl;
+}
+
+void printTitle(const std::string& title) {
+    printDivider();
+    std::cerr << title << std::endl;
+    printDivider();
+}
+
+void printSectionHeader(const std::string& headline) {
+    std::cerr << std::endl;
+    std::cerr << headline << std::endl;
+    std::cerr << std::string(headline.size(), '-') << std::endl;
+}
+
+void printOption(const std::string& option, const std::string& description) {
+    std::cerr << "  " << std::left << std::setw(kOptionColumnWidth) << option << description << std::endl;
+}
+
+void printCommandsOverview() {
+    printSectionHeader("Commands");
+    for (const auto& info : kCommandInfos) {
+        printOption(info.name, info.description);
+    }
+}
+
+void setCommand(std::unordered_map<std::string, std::string>& args,
+                const std::string& command,
+                const std::unordered_map<std::string, std::string>& commandFlags) {
+    args["command"] = command;
+    for (const auto& entry : commandFlags) {
+        if (entry.second == command) {
+            args.emplace(entry.first, "");
+        }
+    }
+}
+
+}  // namespace
+
+void printFullDoc();
+void printAssemblyDoc();
+void printGermlineSomaticDoc();
+void printGermlineDoc();
 
 void TandemTwister::through_error(std::unordered_map<std::string, std::string>& args, const std::string& message) {
     std::cerr << message << std::endl;
@@ -16,83 +87,140 @@ bool TandemTwister::openFile(const std::string& filename) {
     return true;
 }
 
-void printVersion(){
-    std::cerr << "TandemTwister: A tool for genotyping tandem repeats from long reads and aligned genome input" << std::endl;
-    std::cerr << "Version: 1.0.0" << std::endl;
-    std::cerr << "Author: Lion Ward Al Raei " << std::endl;
-    std::cerr << "Email: Lionward.alraei@gmail.com " << std::endl;
-    std::cerr << "Institue: (Max Planck institute for molecular genetics)" << std::endl;
+void printVersion() {
+    printTitle("TandemTwister");
+    std::cerr << "  Purpose : A tool for genotyping tandem repeats from long reads and aligned genome input" << std::endl;
+    std::cerr << "  Version : 1.0.0" << std::endl;
+    std::cerr << "  Author  : Lion Ward Al Raei" << std::endl;
+    std::cerr << "  Contact : Lionward.alraei@gmail.com" << std::endl;
+    std::cerr << "  Institute: Max Planck Institute for Molecular Genetics" << std::endl;
     std::cerr << std::endl;
 }
 
 std::unordered_map<std::string, std::string> TandemTwister::parseCommandLine(int argc, char** argv) {
 
-
-    /*
-    * Parse the command line arguments
-
-    * @param argc: The number of arguments
-    * @param argv: The arguments
-    * @return: A map containing the arguments
-    * 
-    
-    */
     std::unordered_map<std::string, std::string> args;
-    if (argc == 1) {
+    if (argc <= 1) {
         printUsage(args);
         exit(1);
     }
 
-    std::vector<std::string> accepted_arguments = { "-b","--bam","-r", "--ref",  "-m", "--motif_file", "-pad", "--padding", "-t", "--threads", "-h", "--help", "-f", "--fasta_file", "-o", "--output_file", "-s", "--output_file_statistics", 
+    const std::unordered_set<std::string> commandNames = {"germline", "somatic", "assembly"};
+    const std::unordered_map<std::string, std::string> commandFlags = {
+        {"--germline", "germline"},
+        {"--somatic", "somatic"},
+        {"--assembly", "assembly"}
+    };
+
+    int index = 1;
+    std::string command;
+
+    if (index < argc && argv[index][0] != '-') {
+        const std::string candidate = toLower(argv[index]);
+        if (commandNames.count(candidate) != 0) {
+            command = candidate;
+            setCommand(args, command, commandFlags);
+            ++index;
+        } else {
+            std::cerr << "Error: Unrecognized command " << argv[index] << std::endl;
+            printFullDoc();
+            exit(1);
+        }
+    }
+
+    std::vector<std::string> accepted_arguments = { "-b","--bam","-r", "--ref",  "-m", "--motif_file", "-pad", "--padding", "-t", "--threads", "-h", "--help", "-f", "--fasta_file", "-o", "--output_file", "-s", "--output_file_statistics",
     "-mml", "-min_match_ratio_l", "-mms" , "-min_match_ration_s", "-crs", "-consensus_ratio_str", "-minPF", "--minPts_frac" ,"-crv", "--consensus_ratio_vntr", "-ms", "--match_score", "-mp", "--mismatch_penalty", "-gp", "--gap_penalty", "-seps", "--start_eps_str",
     "-sepv", "--start_eps_vntr", "-minPS", "--minPts_str", "-minPV", "--minPts_vntr", "-nls", "--noise_limit_str", "-nlv", "--noise_limit_vntr", "-qs", "--quality_score",
     "-ci", "--cluster_iter","-s","--sex", "--germline", "--somatic", "--assembly", "-rt", "--reads_type","-tanCon", "--tandem_run_threshold" , "-kpr", "--keepPhasingResults", "--sample", "-sn", "--keepCutReads","-kcr","-cor","--correct","-roz","--removeOutliersZscore", "-rtr", "--refineTrRegions","-minR", "--minReadsInRegion", "-btg", "--bamIsTagged", "--version", "-v", "--verbose", "-h" };
-    for (int i = 1; i < argc; i++){
-        // check if the argument starts with a dash
-        if (argv[i][0] == '-') {
-            // check if the argument is in the accepted arguments
-            if (std::find(accepted_arguments.begin(), accepted_arguments.end(), argv[i]) != accepted_arguments.end()) {
-                // check if the argument is not the last one
-                if (i + 1 < argc) {
-                    // check if the next argument does not start with a dash
-                    if (std::find(accepted_arguments.begin(), accepted_arguments.end(), argv[i + 1]) == accepted_arguments.end()) {
 
-                        args[argv[i]] = argv[i + 1];
-                        i++;
+    for (int i = index; i < argc; ++i) {
+        if (argv[i][0] == '-') {
+            if (std::find(accepted_arguments.begin(), accepted_arguments.end(), argv[i]) != accepted_arguments.end()) {
+                const std::string key = argv[i];
+
+                const auto flagIt = commandFlags.find(key);
+                if (flagIt != commandFlags.end()) {
+                    if (!command.empty() && command != flagIt->second) {
+                        std::cerr << "Error: Multiple commands specified (" << command << " and " << flagIt->second << ")." << std::endl;
+                        printUsage(args);
+                        exit(1);
                     }
-                    else {
-                        args[argv[i]] = "";
-                    }
+                    command = flagIt->second;
+                    setCommand(args, command, commandFlags);
                 }
-                else {
-                    args[argv[i]] = "";
+
+                if (i + 1 < argc && argv[i + 1][0] != '-' &&
+                    std::find(accepted_arguments.begin(), accepted_arguments.end(), argv[i + 1]) == accepted_arguments.end()) {
+                    args[key] = argv[i + 1];
+                    ++i;
+                } else {
+                    args[key] = "";
                 }
+            } else {
+                std::cerr << "Error: Unrecognized argument " << argv[i] << std::endl;
+                printUsage(args);
+                exit(1);
             }
-            else {
+        } else {
+            const std::string token = toLower(argv[i]);
+            if (commandNames.count(token) != 0) {
+                if (!command.empty() && command != token) {
+                    std::cerr << "Error: Multiple commands specified (" << command << " and " << token << ")." << std::endl;
+                    printUsage(args);
+                    exit(1);
+                }
+                command = token;
+                setCommand(args, command, commandFlags);
+            } else {
                 std::cerr << "Error: Unrecognized argument " << argv[i] << std::endl;
                 printUsage(args);
                 exit(1);
             }
         }
-        else {
-            std::cerr << "Error: Unrecognized argument " << argv[i] << std::endl;
-            printUsage(args);
-            exit(1);
+    }
+
+    if (command.empty()) {
+        for (const auto& entry : commandFlags) {
+            if (args.find(entry.first) != args.end()) {
+                command = entry.second;
+                setCommand(args, command, commandFlags);
+                break;
+            }
         }
     }
-    // if arguments only 1 
-    if (args.size() == 1) {
-        if (args.find("-h") != args.end() || args.find("--help") != args.end() || args.find("--assembly") != args.end() || args.find("--germline") != args.end() || args.find("--somatic") != args.end() ) {
-            printUsage(args);
-            exit(0);
-        }
-        if (args.find("--version") != args.end()) {
-            printVersion();
-            exit(0);
-        }
+
+    const bool hasHelp = args.find("-h") != args.end() || args.find("--help") != args.end();
+    const bool hasVersion = args.find("--version") != args.end();
+
+    if (hasVersion && command.empty()) {
+        printVersion();
+        exit(0);
     }
-    // put the whole command line in string 
-    std::string command_line = "";
+
+    if (hasHelp && command.empty()) {
+        printUsage(args);
+        exit(0);
+    }
+
+    if (command.empty()) {
+        std::cerr << "Error: Missing analysis command. Use one of: germline, somatic, assembly." << std::endl;
+        printFullDoc();
+        exit(1);
+    }
+
+    args["command"] = command;
+
+    if (hasVersion) {
+        printVersion();
+        exit(0);
+    }
+
+    if (hasHelp) {
+        printUsage(args);
+        exit(0);
+    }
+
+    std::string command_line;
     for (int i = 0; i < argc; i++) {
         command_line += argv[i];
         command_line += " ";
@@ -109,166 +237,157 @@ void TandemTwister::open_reference_file(const std::string& reference_file, faidx
 }
 
 
-void printFullDoc(){
-
+void printFullDoc() {
     printVersion();
-    std::cerr << "TandemTwister: A tool for genotyping tandem repeats from long reads and aligned genome input" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "Usage: TandemTwister --germline [options] -b <input_bam_file> -m <motif_file> -r <input_reference_file> -o <output_file>  -s <sample_sex>" << std::endl;
-    std::cerr << "Usage: TandemTwister --somatic [options] -b <input_bam_file> -m <motif_file> -r <input_reference_file> -o <output_file>  -s <sample_sex>" << std::endl;
-    std::cerr << "Usage: TandemTwister --assembly [options] -b <input_bam_file> -m <motif_file> -r <input_reference_file> -o <output_file>  -s <sample_sex>" << std::endl;
 
-    std::cerr << std::endl;
-    std::cerr << "Required input:" << std::endl;
-    std::cerr << "--germline/--somatic/--assembly           Type of analysis to perform" << std::endl;
-    std::cerr << " -b, --bam                                path to the bam file of the aligned reads to the reference genome" << std::endl;
-    std::cerr << " -r, --ref                                Path to the input reference file [.fa/.fna]." << std::endl;
-    std::cerr << " -m, --motif_file                         path to the file with reference coordinates and motif sequence [BED/TSV/CSV]" << std::endl;
-    std::cerr << " -o, --output_file                        Output file containing region, motif, hap1 and hap2 copy numbers" << std::endl;
-    std::cerr << " -s, --sex                                Sample sex (0|female 1|male)" << std::endl;
-    std::cerr << " -sn, --sample                            name of sample" << std::endl;
-    std::cerr << " -rt, --reads_type                        Type of reads (Default: CCS)" << std::endl;
+    printSectionHeader("Usage");
+    printOption("tandemtwister [global options] <command> [command options]", "Run TandemTwister in the selected analysis mode.");
 
-    std::cerr << "[options]: Dynamic programming alignment Parameters: " << std::endl;
-    std::cerr << " -mml, --min_match_ratio_l                Minimum match ratio for long motifs (Default: 0.5)" << std::endl;
-    std::cerr << " -mms, --min_match_ratio_s                Minimum match ratio for short motifs (Default: [1.,1.,1,0.55,0.5,0.65,0.55,0.625,0.65,0.5])" << std::endl;
-    // std::cerr << " -ms, --match_score                       Match score (Default: 2)" << std::endl;
-    // std::cerr << " -mp, --mismatch_penalty                  Mismatch penalty (Default: -1)" << std::endl;
-    // std::cerr << " -gp, --gap_penalty                       Gap penalty (Default: -1)" << std::endl;
-    std::cerr << std::endl;
+    printCommandsOverview();
 
-    std::cerr << "[options]: (only for germline and somatic analysis)" << std::endl;
-    std::cerr << "\t Read extraction parameters:" << std::endl;
-    std::cerr << "\t -h, --help                               Show help message" << std::endl;
-    std::cerr << "\t -s,  --output_file_statistics            Output file containing phasing information and consensus CN Call for each region" << std::endl;
-    std::cerr << "\t -pad, --padding                          padding around the str region to extract reads from (Default: 0)" << std::endl;
-    std::cerr << "\t -t, --threads                            Number of threads to use (Default: 1)" << std::endl;
-    std::cerr << "\t -kpr, --keepPhasingResults               Keep phasing results (Default: false)" << std::endl;
-    std::cerr << "\t -kcr, --keepCutReads                     keep cut reads (Default: false)"  << std::endl;
-    std::cerr << "\t -minR, --minReadsInRegion                minimum number of reads that should span the region (Default: 2)" << std::endl;
-    std::cerr << "\t -btg, --bamIsTagged                      reads in bam are phased (Default: false)" << std::endl;
-    std::cerr << "\t -qs, --quality_score                     minimum quality score for a read to be considered (Default: 10 , Max:60)" << std::endl;
-    std::cerr << std::endl;
+    printSectionHeader("Getting Started");
+    printOption("tandemtwister germline --help", "Display germline-specific options.");
+    printOption("tandemtwister somatic --help", "Display somatic-specific options.");
+    printOption("tandemtwister assembly --help", "Display assembly-specific options.");
 
-    std::cerr << "\t Correction parameters:" << std::endl;
-    std::cerr << "\t -cor, --correct                          perform genotype calling correction (CCS Default: false, CLR/ONT Default: true)" << std::endl;
-    std::cerr << "\t -crs, --consensus_ratio_str              minimum percentage of reads in a cluster that have to call an intrval while correction (STR) (Default: 0.3)" << std::endl;
-    std::cerr << "\t -crv, --consensus_ratio_vntr             minimum percentage of reads in a cluster that have to call an intrval while correction (VNTR) (Default: 0.3)" << std::endl;
-    std::cerr << "\t -roz, --removeOutliersZscore             remove outliers for phasing (Default: false)" << std::endl;
-    //std::cerr << " -rtr, --refineTrRegions                  refine tandem repeat regions (Default: true)" << std::endl;
-    std::cerr << std::endl;
-
-    std::cerr << "\t Clustering parameters:" << std::endl;
-    std::cerr << "\t -seps, --start_eps_str                   the srart radian for clustering for str regions (Default: 0.7)" << std::endl;
-    std::cerr << "\t -sepv, --start_eps_vntr                  the srart radian for clustering for vntr regions (Default: 0.6)" << std::endl;
-    std::cerr << "\t -minPF, --minPts_frac                    the minimum fraction of reads that should be in one cluster (Default: 0.12)" << std::endl;
-    std::cerr << "\t -nls, --noise_limit_str                  the noise limit for clustering for str regions (Default: 0.2)" << std::endl;
-    std::cerr << "\t -nlv, --noise_limit_vntr                 the noise limit for clustering for vntr regions (Default: 0.35)" << std::endl;
-    std::cerr << "\t -ci, --cluster_iter                      the number of iteration for clustering (Default: 40)" << std::endl;
-    std::cerr << std::endl;
-
-    std::cerr << "\t -v, --verbose                            Verbose mode Verbosity level (0:error, 1:critical, 2:info, 3:debug) (Default: 0)" << std::endl;
-    std::cerr << "\t -h, --help                               print help message" << std::endl;
+    printSectionHeader("Global Options");
+    printOption("-tanCon, --tandem_run_threshold", "Maximum bases for merging tandem repeat runs (default: 2 × motif size).");
+    printOption("-v, --verbose", "Verbosity level (0: error, 1: critical, 2: info, 3: debug).");
+    printOption("-h, --help | --version", "Display this help or version information.");
 }
 
-void printAssemblyDoc(){
+void printAssemblyDoc() {
+    printSectionHeader("Usage");
+    printOption("tandemtwister assembly [options] -b <alignment_input> -m <motif_file> -r <reference_fasta> -o <output_file> -s <sample_sex>",
+                "Run assembly-based analysis on aligned genome input.");
 
-    std::cerr << "--germline/--somatic/--assembly           Type of analysis to perform" << std::endl;
-    std::cerr << " -b, --bam                                path to the bam file of the aligned reads to the reference genome" << std::endl;
-    std::cerr << " -r, --ref                                Path to the input reference file [.fa/.fna]." << std::endl;
-    std::cerr << " -m, --motif_file                         path to the file with reference coordinates and motif sequence [BED/TSV/CSV]" << std::endl;
-    std::cerr << " -o, --output_file                        Output file containing region, motif, hap1 and hap2 copy numbers" << std::endl;
-    std::cerr << " -s, --sex                                Sample sex (0|female 1|male)" << std::endl;
-    std::cerr << " -sn, --sample                            name of sample" << std::endl;
-    std::cerr << " -rt, --reads_type                        Type of reads (Default: CCS)" << std::endl;
+    printSectionHeader("Required Arguments");
+    printOption("Command: assembly [--assembly]", "Selects the assembly analysis workflow (legacy flag supported).");
+    printOption("-b, --bam", "Path to the aligned assembly BAM file.");
+    printOption("-r, --ref", "Reference FASTA file (.fa / .fna).");
+    printOption("-m, --motif_file", "Motif definition file (BED / TSV / CSV).");
+    printOption("-o, --output_file", "Output file for region, motif, and haplotype copy numbers.");
+    printOption("-s, --sex", "Sample sex (0 | female, 1 | male).");
+    printOption("-sn, --sample", "Optional sample identifier.");
+    printOption("-rt, --reads_type", "Sequencing platform / read type (default: CCS).");
 
-    std::cerr << "[options]: Dynamic programming alignment Parameters: " << std::endl;
-    std::cerr << " -mml, --min_match_ratio_l                Minimum match ratio for long motifs (Default: 0.5)" << std::endl;
-    // std::cerr << " -ms, --match_score                       Match score (Default: 10)" << std::endl;
-    // std::cerr << " -mp, --mismatch_penalty                  Mismatch penalty (Default: -2)" << std::endl;
-    // std::cerr << " -gp, --gap_penalty                       Gap penalty (Default: -5)" << std::endl;
-    std::cerr << std::endl;
+    printSectionHeader("Alignment Parameters");
+    printOption("-mml, --min_match_ratio_l", "Minimum match ratio for long motifs (default: 0.5).");
+    // printOption("-ms, --match_score", "Match score (default: 10).");
+    // printOption("-mp, --mismatch_penalty", "Mismatch penalty (default: -2).");
+    // printOption("-gp, --gap_penalty", "Gap penalty (default: -5).");
+
+    printSectionHeader("General");
+    printOption("-tanCon, --tandem_run_threshold", "Maximum bases for merging tandem repeat runs (default: 2 × motif size).");
+    printOption("-v, --verbose", "Verbosity level (0: error, 1: critical, 2: info, 3: debug).");
+    printOption("-h, --help | --version", "Display this help or version information.");
 }
 
-void printGermlineSomaticDoc(){
-    std::cerr << "Required input:" << std::endl;
-    std::cerr << "--germline/--somatic/--assembly           Type of analysis to perform" << std::endl;
-    std::cerr << " -b, --bam                                path to the bam file of the aligned reads to the reference genome" << std::endl;
-    std::cerr << " -r, --ref                                Path to the input reference file [.fa/.fna]." << std::endl;
-    std::cerr << " -m, --motif_file                         path to the file with reference coordinates and motif sequence [BED/TSV/CSV]" << std::endl;
-    std::cerr << " -o, --output_file                        Output file containing region, motif, hap1 and hap2 copy numbers" << std::endl;
-    std::cerr << " -s, --sex                                Sample sex (0|female 1|male)" << std::endl;
-    std::cerr << " -sn, --sample                            name of sample" << std::endl;
-    std::cerr << " -rt, --reads_type                        Type of reads (Default: CCS)" << std::endl;
+void printGermlineSomaticDoc() {
+    printSectionHeader("Required Arguments");
+    printOption("Command: germline | somatic [--germline | --somatic]  ", "Selects the germline or somatic analysis workflow (legacy flags supported).");
+    printOption("-b, --bam", "Path to the BAM file containing aligned reads.");
+    printOption("-r, --ref", "Reference FASTA file (.fa / .fna).");
+    printOption("-m, --motif_file", "Motif definition file (BED / TSV / CSV).");
+    printOption("-o, --output_file", "Output file for region, motif, and haplotype copy numbers.");
+    printOption("-s, --sex", "Sample sex (0 | female, 1 | male).");
+    printOption("-sn, --sample", "Optional sample identifier.");
+    printOption("-rt, --reads_type", "Sequencing platform / read type (default: CCS).");
 
-    std::cerr << "[options]: Dynamic programming alignment Parameters: " << std::endl;
-    std::cerr << " -mml, --min_match_ratio_l                Minimum match ratio for long motifs (Default: 0.5)" << std::endl;
-    // std::cerr << " -ms, --match_score                       Match score (Default: 10)" << std::endl;
-    // std::cerr << " -mp, --mismatch_penalty                  Mismatch penalty (Default: -2)" << std::endl;
-    // std::cerr << " -gp, --gap_penalty                       Gap penalty (Default: -5)" << std::endl;
-    std::cerr << std::endl;
+    printSectionHeader("Alignment Parameters");
+    printOption("-mml, --min_match_ratio_l", "Minimum match ratio for long motifs (default: 0.5).");
+    // printOption("-ms, --match_score", "Match score (default: 10).");
+    // printOption("-mp, --mismatch_penalty", "Mismatch penalty (default: -2).");
+    // printOption("-gp, --gap_penalty", "Gap penalty (default: -5).");
 
-    std::cerr << "[options]: (only for germline and somatic analysis)" << std::endl;
-    std::cerr << "\t Read extraction parameters:" << std::endl;
-    std::cerr << "\t -h, --help                               Show help message" << std::endl;
-    std::cerr << "\t -s,  --output_file_statistics            Output file containing phasing information and consensus CN Call for each region" << std::endl;
-    std::cerr << "\t -pad, --padding                          padding around the str region to extract reads from (Default: 0)" << std::endl;
-    std::cerr << "\t -t, --threads                            Number of threads to use (Default: 1)" << std::endl;
-    std::cerr << "\t -kpr, --keepPhasingResults               Keep phasing results (Default: false)" << std::endl;
-    std::cerr << "\t -kcr, --keepCutReads                     keep cut reads (Default: false)"  << std::endl;
-    std::cerr << "\t -minR, --minReadsInRegion                minimum number of reads that should span the region (Default: 2)" << std::endl;
-    std::cerr << "\t -btg, --bamIsTagged                      reads in bam are phased (Default: false)" << std::endl;
-    std::cerr << "\t -qs, --quality_score                     minimum quality score for a read to be considered (Default: 10 , Max:60)" << std::endl;
-    std::cerr << std::endl;
+    printSectionHeader("Read Extraction");
+    printOption("-s, --output_file_statistics", "Optional phasing summary output file.");
+    printOption("-pad, --padding", "Padding around the STR region when extracting reads (default: 0).");
+    printOption("-t, --threads", "Number of threads (default: 1).");
+    printOption("-kpr, --keepPhasingResults", "Persist intermediate phasing results (default: false).");
+    printOption("-kcr, --keepCutReads", "Retain reads trimmed during preprocessing (default: false).");
+    printOption("-minR, --minReadsInRegion", "Minimum spanning reads required per region (default: 2).");
+    printOption("-btg, --bamIsTagged", "Treat BAM as pre-tagged/phased (default: false).");
+    printOption("-qs, --quality_score", "Minimum read quality score (default: 10, max: 60).");
 
-    std::cerr << "\t Correction parameters:" << std::endl;
-    std::cerr << "\t -cor, --correct                          perform genotype calling correction (CCS Default: false, CLR/ONT Default: true)" << std::endl;
-    std::cerr << "\t -crs, --consensus_ratio_str              minimum percentage of reads in a cluster that have to call an intrval while correction (STR) (Default: 0.3)" << std::endl;
-    std::cerr << "\t -crv, --consensus_ratio_vntr             minimum percentage of reads in a cluster that have to call an intrval while correction (VNTR) (Default: 0.3)" << std::endl;
-    std::cerr << "\t -roz, --removeOutliersZscore             remove outliers for phasing (Default: false)" << std::endl;
-    //std::cerr << " -rtr, --refineTrRegions                  refine tandem repeat regions (Default: true)" << std::endl;
-    std::cerr << std::endl;
+    printSectionHeader("Correction");
+    printOption("-cor, --correct", "Enable genotype correction (CCS default: false; CLR/ONT default: true).");
+    printOption("-crs, --consensus_ratio_str", "Minimum consensus ratio for STR correction (default: 0.3).");
+    printOption("-crv, --consensus_ratio_vntr", "Minimum consensus ratio for VNTR correction (default: 0.3).");
+    printOption("-roz, --removeOutliersZscore", "Remove outliers before phasing (default: false).");
+    // printOption("-rtr, --refineTrRegions", "Refine tandem repeat regions (default: true).");
 
-    std::cerr << "\t Clustering parameters:" << std::endl;
-    std::cerr << "\t -seps, --start_eps_str                   the srart radian for clustering for str regions (Default: 0.2)" << std::endl;
-    std::cerr << "\t -sepv, --start_eps_vntr                  the srart radian for clustering for vntr regions (Default: 0.2)" << std::endl;
-    std::cerr << "\t -minPF, --minPts_frac                    the minimum fraction of reads that should be in one cluster (Default: 0.12)" << std::endl;
-    std::cerr << "\t -nls, --noise_limit_str                  the noise limit for clustering for str regions (Default: 0.2)" << std::endl;
-    std::cerr << "\t -nlv, --noise_limit_vntr                 the noise limit for clustering for vntr regions (Default: 0.35)" << std::endl;
-    std::cerr << "\t -ci, --cluster_iter                      the number of iteration for clustering (Default: 40)" << std::endl;
-    std::cerr << std::endl;
+    printSectionHeader("Clustering");
+    printOption("-seps, --start_eps_str", "Initial epsilon for STR clustering (default: 0.2).");
+    printOption("-sepv, --start_eps_vntr", "Initial epsilon for VNTR clustering (default: 0.2).");
+    printOption("-minPF, --minPts_frac", "Minimum read fraction per cluster (default: 0.12).");
+    printOption("-nls, --noise_limit_str", "Noise limit for STR clustering (default: 0.2).");
+    printOption("-nlv, --noise_limit_vntr", "Noise limit for VNTR clustering (default: 0.35).");
+    printOption("-ci, --cluster_iter", "Number of clustering iterations (default: 40).");
 
-    std::cerr << "\t -v, --verbose                            Verbose mode Verbosity level (0:error, 1:critical, 2:info, 3:debug) (Default: 0)" << std::endl;
-    std::cerr << "\t -h, --help                               print help message" << std::endl;
-
+    printSectionHeader("General");
+    printOption("-v, --verbose", "Verbosity level (0: error, 1: critical, 2: info, 3: debug).");
+    printOption("-h, --help | --version", "Display this help or version information.");
 }
-void printGermlineDoc(){
-    std::cerr << "Usage: TandemTwister --germline [options] -b <input_bam_file> -m <motif_file> -r <input_reference_file> -o <output_file>  -s <sample_sex>" << std::endl;
+
+void printGermlineDoc() {
+    printSectionHeader("Usage");
+    printOption("tandemtwister germline [options] -b <input_bam_file> -m <motif_file> -r <reference_fasta> -o <output_file> -s <sample_sex>",
+                "Run germline analysis on long-read alignments.");
+    printOption("tandemtwister somatic  [options] -b <input_bam_file> -m <motif_file> -r <reference_fasta> -o <output_file> -s <sample_sex>",
+                "Run somatic analysis on long-read alignments.");
     printGermlineSomaticDoc();
 }
 
 
 void TandemTwister::printUsage(std::unordered_map<std::string, std::string> &args) {
+    const auto commandIt = args.find("command");
+
+    if (commandIt != args.end()) {
+        const std::string& command = commandIt->second;
+        printVersion();
+        if (command == "germline") {
+            printSectionHeader("Germline Analysis");
+            std::cerr << "Genotyping tandem repeats from long reads." << std::endl;
+            printGermlineDoc();
+            return;
+        }
+        if (command == "somatic") {
+            printSectionHeader("Somatic Analysis");
+            std::cerr << "Genotyping tandem repeats from long reads." << std::endl;
+            printGermlineDoc();
+            return;
+        }
+        if (command == "assembly") {
+            printSectionHeader("Assembly Analysis");
+            std::cerr << "Genotyping tandem repeats from aligned genome input." << std::endl;
+            printAssemblyDoc();
+            return;
+        }
+    }
     
     if (args.find("--germline") != args.end() || args.find("--somatic") != args.end()) {
         printVersion();
         if (args.find("--germline") != args.end()) {
-        std::cerr << "Germline analysis: Genotyping tandem repeats from long reads" << std::endl;
+            printSectionHeader("Germline Analysis");
+            std::cerr << "Genotyping tandem repeats from long reads." << std::endl;
+        } else {
+            printSectionHeader("Somatic Analysis");
+            std::cerr << "Genotyping tandem repeats from long reads." << std::endl;
         }
-        else{
-            std::cerr << "Somatic analysis: Genotyping tandem repeats from long reads" << std::endl;
-        }
-        
+
         printGermlineDoc();
+        return;
     }
-    else if (args.find("--assembly") != args.end()) {
+
+    if (args.find("--assembly") != args.end()) {
         printVersion();
-        std::cerr << "Assembly analysis: Genotyping tandem repeats from aligned genome input" << std::endl;
+        printSectionHeader("Assembly Analysis");
+        std::cerr << "Genotyping tandem repeats from aligned genome input." << std::endl;
         printAssemblyDoc();
+        return;
     }
-    else {
-        printFullDoc();
-    }
-    //std::cerr << " -tanCon, --tandem_run_threshold          maximum number of bases for merging the tandem-repeats runs in the reference sequence (Default: 2 * motif_size)" << std::endl;
+
+    printFullDoc();
 }
 
