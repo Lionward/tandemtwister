@@ -152,7 +152,7 @@ tandemtwister [global options] <command> [command options]
   <li>
     <strong>Command</strong>
     <ul>
-      <li><code>germline</code> / <code>somatic</code> / <code>assembly</code>: Selects the analysis workflow. Legacy flags (<code>--germline</code>, <code>--somatic</code>, <code>--assembly</code>) are still accepted.</li>
+      <li><code>germline</code> / <code>somatic</code> / <code>assembly</code>: Selects the analysis workflow.
       <p><span style="color: #e6b800; font-size: 1.3em;">&#9888;&#65039;</span> <strong>Warning:</strong> <em>Somatic mode is still experimental and has not been fully tested. Use with caution.</em></p>
     </ul>
   </li>
