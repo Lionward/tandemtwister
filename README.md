@@ -46,6 +46,7 @@
 - [Installation](#-installation)
 - [Usage](#usage)
   - [Required Input](#required-input)
+  - [Global Options](#global-options)
   - [Dynamic Programming Alignment Parameters](#dynamic-programming-alignment-parameters)
   - [Germline & Somatic Analysis Options](#germline--somatic-analysis-options)
   - [Help](#help)
@@ -133,15 +134,25 @@ make
 <!-- Usage -->
 ## Usage
 
-To use the TandemTwister run the desired commands within the activated environment.
+Run `tandemtwister` from an activated environment using the command-first interface:
+
+```bash
+tandemtwister [global options] <command> [command options]
+```
+
+**Commands**
+- `germline` – Genotype germline tandem repeats from long-read alignments.
+- `somatic` – Profile somatic tandem-repeat expansions from long-read alignments.
+- `assembly` – Genotype tandem repeats from aligned genome or assembly input.
+
 
 ### Required Input
 
 <ol>
   <li>
-    <strong>Analysis Type</strong>
+    <strong>Command</strong>
     <ul>
-      <li><code>--germline</code> / <code>--somatic</code> / <code>--assembly</code>: Type of analysis to perform.</li>
+      <li><code>germline</code> / <code>somatic</code> / <code>assembly</code>: Selects the analysis workflow. Legacy flags (<code>--germline</code>, <code>--somatic</code>, <code>--assembly</code>) are still accepted.</li>
       <p><span style="color: #e6b800; font-size: 1.3em;">&#9888;&#65039;</span> <strong>Warning:</strong> <em>Somatic mode is still experimental and has not been fully tested. Use with caution.</em></p>
     </ul>
   </li>
@@ -159,6 +170,13 @@ To use the TandemTwister run the desired commands within the activated environme
     </ul>
   </li>
 </ol>
+
+### Global Options
+
+- <code>-tanCon, --tandem_run_threshold</code> &nbsp; Maximum number of bases for merging tandem-repeat runs (default: 2 × motif size).
+- <code>-v, --verbose</code> &nbsp; Verbosity level (0 = error, 1 = critical, 2 = info, 3 = debug).
+- <code>-h, --help</code> &nbsp; Display global help (or command-specific help when issued after a command).
+- <code>--version</code> &nbsp; Print version information and exit.
 
 ### Dynamic Programming Alignment Parameters
 
@@ -202,12 +220,13 @@ To use the TandemTwister run the desired commands within the activated environme
 
 ### Help
 <ul>
-  <li><code>-h, --help</code>: Print help message</li>
+  <li><code>tandemtwister --help</code>: Show the global overview with available commands and options.</li>
+  <li><code>tandemtwister &lt;command&gt; --help</code>: Show command-specific options (e.g., <code>tandemtwister germline --help</code>).</li>
 </ul>
 
 ### Example
 <pre><code>
-TandemTwister --germline \
+tandemtwister germline \
   -b sample.bam \
   -m motifs.bed \
   -r reference.fna \
