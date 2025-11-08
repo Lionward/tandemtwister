@@ -386,8 +386,8 @@ public:
 
         void print_0_1_matrix(std::vector<std::vector<uint32_t>> clustered_intervals);
         std::vector<Interval> findLongestTandemRun(const std::vector<Interval>& intervals, const uint16_t motif_size);
-        std::vector<std::vector<Interval>> findAllTandemRuns(const std::vector<Interval>& intervals,const  uint16_t motif_size);
-        bool IsMotifRun(const std::vector<Interval> & intervals ,const  uint16_t motif_size); //, const unsigned int motif_size
+        std::vector<std::vector<Interval>> findAllTandemRuns(const std::vector<Interval>& intervals, const std::vector<std::string>& motifs, const std::string& sequence);
+        bool IsMotifRun(const std::vector<Interval> & intervals, const std::vector<uint16_t>& motif_lengths); //, const unsigned int motif_size
         
         // phasing functions (consider putting them in a different class)
         std::tuple<std::vector<std::vector<uint16_t>>, std::vector<uint16_t>> runDBSCAN(const arma::mat &features_matrix_stdandarized,float eps, uint16_t minPts);

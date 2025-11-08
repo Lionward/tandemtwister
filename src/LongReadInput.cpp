@@ -8,65 +8,232 @@
 #include <iostream>
 // time 
 #include <chrono>
+#include <limits>
+#include <array>
 
+namespace {
 
-bool TandemTwister::IsMotifRun(const std::vector<Interval> & intervals ,const uint16_t motif_size){
-    /**
-    * Check if the intervals are motif runs
-    * @param intervals: The intervals to check
-    * @param motif_size: The size of the motif
-    * @return: True if the intervals are motif runs, false otherwise
-    */
-    if (intervals.empty()) {
-        return false;
+#ifdef _WIN32
+    constexpr const char* ANSI_RESET = "";
+    std::string colorizeSegment(const std::string& content, const char* /*color_code*/) {
+        return content;
     }
-
-    uint32_t maxMotifSpan = motif_size * intervals.size();
-    uint32_t intervalSpan = intervals.back().end - intervals.front().start +1 ;
-    uint32_t intervalSpan2 = 0;
-    if (intervalSpan > maxMotifSpan){
-        intervalSpan2 = maxMotifSpan;
+    const char* motifColorFor(uint32_t /*motif_id*/) {
+        return "";
     }
-    else {
-        intervalSpan2 = intervalSpan;
-    }
-    
-    if (intervalSpan2 < 4 && motif_size == 1){ // for homopolymers we  only consider motif runs that are at least 5 bases long         
-        return false;
-    }
-    else if (intervalSpan2 < 8 && motif_size > 1){
-        return false;
-    }
-
-    else {
-        uint32_t actualmotifspan = 0;
-        const float threshold = 0.7f;
-        if (intervals[0].start == intervals[0].end){
-            actualmotifspan = intervals.size();
+#else
+    constexpr const char* ANSI_RESET = "\033[0m";
+    std::string colorizeSegment(const std::string& content, const char* color_code) {
+        if (color_code == nullptr || *color_code == '\0') {
+            return content;
         }
-        else{
-            actualmotifspan = std::accumulate(intervals.begin(), intervals.end(), 0, 
-                [](uint32_t sum, const Interval& interval) {
-                    return sum + interval.end - interval.start + 1;
-                });
+        return std::string(color_code) + content + ANSI_RESET;
+    }
+    const char* motifColorFor(uint32_t motif_id) {
+        static const std::array<const char*, 8> palette = {
+            "\033[38;5;45m",
+            "\033[38;5;214m",
+            "\033[38;5;99m",
+            "\033[38;5;46m",
+            "\033[38;5;160m",
+            "\033[38;5;226m",
+            "\033[38;5;27m",
+            "\033[38;5;201m"
+        };
+        return palette[motif_id % palette.size()];
+    }
+#endif
+
+    void visualizeMotifRunsDebug(const std::vector<Interval>& intervals,
+                                 const std::vector<std::vector<Interval>>& keptRuns,
+                                 const std::vector<std::vector<Interval>>& removedRuns,
+                                 const std::vector<std::string>& motifs,
+                                 const std::string& sequence) {
+        if (sequence.empty()) {
+            return;
         }
-        return (static_cast<float>(actualmotifspan) / static_cast<float>(intervalSpan)) > threshold;
+
+        struct Annotation {
+            size_t start;
+            size_t end;
+            uint32_t motif_id;
+            bool kept;
+        };
+
+        std::vector<Annotation> annotations;
+        annotations.reserve(intervals.size());
+        std::string statusLine(sequence.size(), '.');
+
+        auto recordRuns = [&](const std::vector<std::vector<Interval>>& runs, bool kept) {
+            const char mark = kept ? '+' : 'X';
+            for (const auto& run : runs) {
+                for (const auto& interval : run) {
+                    if (interval.end < interval.start) {
+                        continue;
+                    }
+                    size_t startIdx = (interval.start > 0) ? static_cast<size_t>(interval.start - 1) : 0;
+                    if (startIdx >= sequence.size()) {
+                        continue;
+                    }
+                    size_t endIdx = static_cast<size_t>(interval.end);
+                    endIdx = std::min(endIdx, sequence.size());
+                    if (endIdx <= startIdx) {
+                        continue;
+                    }
+                    annotations.push_back({startIdx, endIdx, interval.motif_id, kept});
+                    for (size_t pos = startIdx; pos < endIdx; ++pos) {
+                        statusLine[pos] = mark;
+                    }
+                }
+            }
+        };
+
+        recordRuns(keptRuns, true);
+        recordRuns(removedRuns, false);
+
+        std::sort(annotations.begin(), annotations.end(), [](const Annotation& lhs, const Annotation& rhs) {
+            return lhs.start < rhs.start;
+        });
+
+        std::string coloredSequence;
+        coloredSequence.reserve(sequence.size() * 2);
+        size_t cursor = 0;
+
+        for (const auto& annotation : annotations) {
+            if (cursor < annotation.start) {
+                coloredSequence.append(sequence.substr(cursor, annotation.start - cursor));
+            }
+            const char* color_code = motifColorFor(annotation.motif_id);
+            coloredSequence += colorizeSegment(sequence.substr(annotation.start, annotation.end - annotation.start), color_code);
+            cursor = annotation.end;
+        }
+        if (cursor < sequence.size()) {
+            coloredSequence.append(sequence.substr(cursor));
+        }
+
+        std::string coloredMotifsList = "{";
+        for (size_t i = 0; i < motifs.size(); ++i) {
+            const char* motif_color = motifColorFor(static_cast<uint32_t>(i));
+            coloredMotifsList += colorizeSegment(motifs[i], motif_color);
+            if (i + 1 < motifs.size()) {
+                coloredMotifsList += ", ";
+            }
+        }
+        coloredMotifsList += "}";
+
+        spdlog::debug("findAllTandemRuns: motifs {}", coloredMotifsList);
+        spdlog::debug("findAllTandemRuns: sequence view {}", coloredSequence);
+        spdlog::debug("findAllTandemRuns: status line   {}", statusLine);
+        spdlog::debug("findAllTandemRuns: legend '+' kept, 'X' removed, '.' untouched");
     }
 }
 
 
-std::vector<std::vector<Interval>> TandemTwister::findAllTandemRuns(const std::vector<Interval>& intervals, const uint16_t motif_size) {
+bool TandemTwister::IsMotifRun(const std::vector<Interval> & intervals, const std::vector<uint16_t>& motif_lengths){
+    /**
+    * Check if the intervals are motif runs
+    * @param intervals: The intervals to check
+    * @param motif_lengths: The size of the motifs indexed by motif id
+    * @return: True if the intervals are motif runs, false otherwise
+    */
+    if (intervals.empty()) {
+        spdlog::debug("IsMotifRun: rejecting empty interval run");
+        return false;
+    }
+
+    if (spdlog::should_log(spdlog::level::debug)) {
+        spdlog::debug("IsMotifRun: evaluating run [{} intervals] span {}-{}", intervals.size(), intervals.front().start, intervals.back().end);
+    }
+
+    auto motifLengthFor = [&motif_lengths](const Interval& interval) -> uint16_t {
+        if (interval.motif_id < motif_lengths.size()) {
+            return motif_lengths[interval.motif_id];
+        }
+        if (interval.end >= interval.start) {
+            uint32_t span = interval.end - interval.start + 1;
+            return span > std::numeric_limits<uint16_t>::max() ? std::numeric_limits<uint16_t>::max() : static_cast<uint16_t>(span);
+        }
+        return 0;
+    };
+
+    uint32_t maxMotifSpan = 0;
+    uint16_t maxMotifLenInRun = 0;
+    bool hasKnownLength = false;
+    for (const auto& interval : intervals) {
+        uint16_t motifLen = motifLengthFor(interval);
+        if (motifLen > 0) {
+            hasKnownLength = true;
+        }
+        maxMotifSpan += motifLen;
+        maxMotifLenInRun = std::max<uint16_t>(maxMotifLenInRun, motifLen);
+    }
+
+    if (!hasKnownLength) {
+        spdlog::debug("IsMotifRun: rejecting run {}-{} due to missing motif length mapping", intervals.front().start, intervals.back().end);
+        return false;
+    }
+
+    uint32_t intervalSpan = (intervals.back().end >= intervals.front().start)
+        ? intervals.back().end - intervals.front().start + 1
+        : 0;
+    if (intervalSpan == 0) {
+        spdlog::debug("IsMotifRun: rejecting run with zero span ({}-{})", intervals.front().start, intervals.back().end);
+        return false;
+    }
+
+    uint32_t intervalSpan2 = std::min(maxMotifSpan, intervalSpan);
+    
+    bool isHomopolymer = maxMotifLenInRun <= 1;
+    if (isHomopolymer && intervalSpan2 < 4){ // for homopolymers we only consider motif runs that are at least 4 bases long
+        spdlog::debug("IsMotifRun: rejecting homopolymer run {}-{} span {} <4", intervals.front().start, intervals.back().end, intervalSpan2);
+        return false;
+    }
+    if (!isHomopolymer && intervalSpan2 < 8){
+        spdlog::debug("IsMotifRun: rejecting mixed-motif run {}-{} span {} <8", intervals.front().start, intervals.back().end, intervalSpan2);
+        return false;
+    }
+
+    uint32_t actualmotifspan = 0;
+    const float threshold = 0.7f;
+    if (intervals[0].start == intervals[0].end){
+        actualmotifspan = intervals.size();
+    }
+    else{
+        actualmotifspan = std::accumulate(intervals.begin(), intervals.end(), 0u, 
+            [](uint32_t sum, const Interval& interval) {
+                return sum + interval.end - interval.start + 1;
+            });
+    }
+    float purity = static_cast<float>(actualmotifspan) / static_cast<float>(intervalSpan);
+    bool isMotif = purity > threshold;
+    spdlog::debug("IsMotifRun: run {}-{} purity {:.3f} (threshold {:.2f}) -> {}", intervals.front().start, intervals.back().end, purity, threshold, isMotif ? "accept" : "reject");
+    return isMotif;
+}
+
+
+std::vector<std::vector<Interval>> TandemTwister::findAllTandemRuns(const std::vector<Interval>& intervals, const std::vector<std::string>& motifs, const std::string& sequence) {
     /**
      * Find all tandem runs in the intervals
      * @param intervals: The intervals to search for tandem runs
-     * @param motif_size: The size of the motif
+     * @param motifs: The motifs observed in the region
      * @return: A vector of vectors containing the tandem runs
      */
     if (intervals.empty()) {
+        spdlog::debug("findAllTandemRuns: received empty interval list");
         return std::vector<std::vector<Interval>>();
     }
 
-    uint32_t threshold = this->tanCon * motif_size +1;
+    std::vector<uint16_t> motif_lengths;
+    motif_lengths.reserve(motifs.size());
+    for (const auto& motif : motifs) {
+        motif_lengths.push_back(static_cast<uint16_t>(motif.size()));
+    }
+
+    if (spdlog::should_log(spdlog::level::debug)) {
+        uint16_t minLen = motif_lengths.empty() ? 0 : *std::min_element(motif_lengths.begin(), motif_lengths.end());
+        uint16_t maxLen = motif_lengths.empty() ? 0 : *std::max_element(motif_lengths.begin(), motif_lengths.end());
+        spdlog::debug("findAllTandemRuns: evaluating {} intervals across {} motifs (len range {}-{})", intervals.size(), motifs.size(), minLen, maxLen);
+    }
 
     uint16_t currentRunStart = 0;
     std::vector<std::vector<Interval>> allRuns;
@@ -78,27 +245,47 @@ std::vector<std::vector<Interval>> TandemTwister::findAllTandemRuns(const std::v
     for (uint32_t i = 1; i < intervals.size(); ++i) {
         const Interval& currentInterval = intervals[i];
         const Interval& previousInterval = intervals[i-1];
-        if (std::abs(static_cast<int>(currentInterval.start) - static_cast<int>(previousInterval.end)) > threshold) {
+        uint16_t currentMotifLength = std::max<uint16_t>(
+            (currentInterval.motif_id < motif_lengths.size()) ? motif_lengths[currentInterval.motif_id] : 1,
+            static_cast<uint16_t>(1));
+        uint16_t previousMotifLength = std::max<uint16_t>(
+            (previousInterval.motif_id < motif_lengths.size()) ? motif_lengths[previousInterval.motif_id] : 1,
+            static_cast<uint16_t>(1));
+        uint32_t threshold = this->tanCon * std::max<uint16_t>(currentMotifLength, previousMotifLength) + 1;
+        int gap = static_cast<int>(currentInterval.start) - static_cast<int>(previousInterval.end);
+        int absGap = std::abs(gap);
+        if (absGap > static_cast<int>(threshold)) {
+            spdlog::debug("findAllTandemRuns: splitting at idx {} gap {} (thr {}) prev motif {} curr motif {}", i, absGap, threshold, previousInterval.motif_id, currentInterval.motif_id);
             allRuns.push_back(std::vector<Interval>(intervals.begin() + currentRunStart, intervals.begin() + i));
             currentRunStart = i;
         }
     }
     allRuns.push_back(std::vector<Interval>(intervals.begin() + currentRunStart, intervals.end()));
     
-    // Filter runs in one pass
-    // 1- remove empty runs
-    // 2- remove runs that are not motif runs
-    // 3- remove runs that are not motif runs and have only one interval ex: like the last AT in this sequence.. --------ATATATATATATATAT--ATATATATA-----ATATATATAT------------AT--
-    allRuns.erase(std::remove_if(allRuns.begin(), allRuns.end(), [this, motif_size,allRuns](const std::vector<Interval>& run) { 
-        return run.empty() || run.size() == 1  || !IsMotifRun(run , motif_size) ; 
-    }), allRuns.end());
+    spdlog::debug("findAllTandemRuns: {} candidate runs before filtering", allRuns.size());
 
+    std::vector<std::vector<Interval>> removedRuns;
+    std::vector<std::vector<Interval>> keptRuns;
+    removedRuns.reserve(allRuns.size());
+    keptRuns.reserve(allRuns.size());
+
+    for (auto& run : allRuns) {
+        if (run.empty() || run.size() == 1 || !IsMotifRun(run , motif_lengths)) {
+            removedRuns.push_back(run);
+        } else {
+            keptRuns.push_back(run);
+        }
+    }
+
+    if (spdlog::should_log(spdlog::level::debug)) {
+        visualizeMotifRunsDebug(intervals, keptRuns, removedRuns, motifs, sequence);
+    }
+
+    allRuns = std::move(keptRuns);
 
     if (allRuns.empty()) {
         return std::vector<std::vector<Interval>>{intervals};
     }
-    
-
 
     return allRuns;
 }
@@ -1000,7 +1187,8 @@ std::tuple<std::vector<std::string> ,std::vector<vcfRecordInfoReads>> TandemTwis
         }
 
         if (motif_size <= this->motif_threashold_size && this->refineTrRegions) { 
-            tandem_runs = findAllTandemRuns(path_reference,motif_size);
+            spdlog::debug("Finding all tandem runs");
+            tandem_runs = findAllTandemRuns(path_reference, motifs, seq);
             tandem_runs_positions.reserve(tandem_runs.size());
         }
         else {
