@@ -111,9 +111,9 @@ int main(int argc, char *argv[]) {
     spdlog::info("========================================");
 
     init_logging(TandemTwister.verbose);
-    //std::cout << "refine TanRegions: " << (TandemTwister.refineTrRegions == 0 ? "false" : "true") << std::endl;
+    //spdlog::info("refine TanRegions: {}", (TandemTwister.refineTrRegions == 0 ? "false" : "true"));
     if (TandemTwister.refineTrRegions){
-        std::cout << "tandem run threshold: " << TandemTwister.tanCon << std::endl;
+        spdlog::info("tandem run threshold: {}", TandemTwister.tanCon);
     }
     // double rss_gb_before = getRSS();
     if (TandemTwister.analysis_type == "somatic" || TandemTwister.analysis_type == "germline") {
@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
         TandemTwister.processRegionsForAssemblyInput();
     }
     else {
-        std::cerr << "Error: bam_type should be either reads or assembly" << std::endl;
+        spdlog::error("Error: bam_type should be either reads or assembly");
         exit(1);
     }
     auto end_time = std::chrono::high_resolution_clock::now();

@@ -188,7 +188,7 @@ std::vector<std::string> TandemTwister::process_chunk_assembly(const std::vector
         reference_start = reads->core.pos;
         uint8_t* seq_data = bam_get_seq(reads); 
         if (seq_data == nullptr) {
-            std::cerr << "Error: bam_get_seq returned nullptr\n";
+            spdlog::error("Error: bam_get_seq returned nullptr");
             exit(1);
         }
         
@@ -265,7 +265,7 @@ std::vector<std::string> TandemTwister::process_chunk_assembly(const std::vector
                 std::string  updated_region = chr + ":" + std::to_string(start_pos) + "-" + std::to_string(end_pos);
                 ref_seq = std::string(fai_fetch(fai, updated_region.c_str(), &len));
                 if (ref_seq == "") {
-                    std::cerr << "Failed to fetch sequence for region " << chr << std::endl;
+                    spdlog::error("Failed to fetch sequence for region {}", chr);
                     ++regions_idx;
                     continue;
                 }
@@ -386,7 +386,7 @@ void TandemTwister::processRegionsForAssemblyInput() {
                     if (this->keep_cut_sequence){
                         std::ofstream infile_cutReads(cut_reads_file_chunk);
                         if (!infile_cutReads.is_open()) {
-                            std::cerr << "Failed to open file " << cut_reads_file_chunk << std::endl;
+                            spdlog::error("Failed to open file {}", cut_reads_file_chunk);
                             return;
                         }
                         infile_cutReads << cut_reads_fasta;
@@ -406,12 +406,12 @@ void TandemTwister::processRegionsForAssemblyInput() {
                 exit(0);           
             
             } catch (const std::runtime_error& e) {
-                std::cerr << e.what() << std::endl;
+                spdlog::error("Error: {}", e.what());
                 return;
             }
         }
         else if (pid < 0) {
-            std::cerr << "Error: could not fork" << std::endl;
+            spdlog::error("Error: could not fork");
             return;
         }
         else {
@@ -446,12 +446,12 @@ void TandemTwister::processRegionsForAssemblyInput() {
     // write the this->vcf_header to the vcf file
 
     if (outfile_vcf == NULL) {
-        std::cerr << " at the end " << std::endl;
-        std::cerr << "Failed to open file " << this->output_file_vcf << std::endl;
+        spdlog::error(" at the end ");
+        spdlog::error("Failed to open file {}", this->output_file_vcf);
         exit(1);
     }
     if (bcf_hdr_write(outfile_vcf, this->vcf_header) != 0) {
-        fprintf(stderr, "Error writing VCF header.\n");
+        spdlog::error("Error writing VCF header.");
         return;
     }
 
@@ -466,7 +466,7 @@ void TandemTwister::processRegionsForAssemblyInput() {
         std::ifstream infile_cutReads(cut_reads_file_chunk);
         if (this->keep_cut_sequence){
             if (!infile_cutReads.is_open()) {
-                std::cerr << "Failed to open file " << cut_reads_file_chunk << " results of process " << i << " will be skipped" << std::endl;
+                spdlog::error("Failed to open file {}", cut_reads_file_chunk);
                 exit(1);
             }
         }
@@ -478,7 +478,7 @@ void TandemTwister::processRegionsForAssemblyInput() {
         htsFile* infile_vcf = hts_open(vcf_file_chunk.c_str(), "r");
        
         if (infile_vcf == NULL) {
-            std::cerr << "Failed to open file " << vcf_file_chunk << std::endl;
+            spdlog::error("Failed to open file {}", vcf_file_chunk);
             exit(1);
         }
         
@@ -526,7 +526,7 @@ void TandemTwister::processRegionsForAssemblyInput() {
     for (auto& record_data : records_with_pos) {
         bcf1_t* rec = std::get<3>(record_data);
         if (bcf_write(outfile_vcf, this->vcf_header, rec) < 0) {
-            std::cerr << "Error writing VCF record to file." << std::endl;
+            spdlog::error("Error writing VCF record to file.");
         }
         bcf_destroy(rec);
     }
@@ -548,7 +548,7 @@ void TandemTwister::processRegionsForAssemblyInput() {
     // index the vcf file
     std::string vcf_file_index = this->output_file_vcf + ".tbi";
     if (bcf_index_build(this->output_file_vcf.c_str(), 0) != 0) {
-        std::cerr << "Failed to index the vcf file " << this->output_file_vcf << std::endl;  
+        spdlog::error("Failed to index the vcf file {}", this->output_file_vcf);  
     }
     this -> outfile.close();
 }

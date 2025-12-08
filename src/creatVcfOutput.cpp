@@ -5,12 +5,16 @@
 #include "include/TandemTwister.hpp"
 
 void TandemTwister::createVcfHeader(){ 
-
+    /*
+    * This function is used to create the VCF header
+    * @param: none
+    * @return: none
+    */
     this->vcf_header = bcf_hdr_init("w"); 
     // Add contig information to the header
     std::ifstream reference_file(this->input_reference_fai);
     if (!reference_file.is_open()) {
-        std::cerr << "Error opening reference file: " << this->input_reference_fai << std::endl;
+        spdlog::error("Error opening reference file: {}", this->input_reference_fai);
         return;
     }
     std::string line;
@@ -63,7 +67,6 @@ void TandemTwister::createVcfHeader(){
     }
 
     bcf_hdr_add_sample(this->vcf_header, this->sampleName.c_str());
-    // Write the header to the VCF file
 
 }
 
@@ -126,6 +129,12 @@ std::string formatStringIntervals(const std::vector<std::string>& intervals) {
 }
 
 std::string get_motifs_list(const std::vector<std::string> &motifs){
+    /*
+    * This function is used to get the motifs list as a string
+    * @param motifs: The motifs to get the list of
+    * @return: The motifs list as a string
+    *   
+    */
     std::string motifs_str = std::accumulate(motifs.begin(), motifs.end(), std::string(),
         [](const std::string& a, const std::string& b) {
             return a.empty() ? b : a + "," + b;
@@ -137,9 +146,16 @@ std::string get_motifs_list(const std::vector<std::string> &motifs){
 
 
 void TandemTwister::writeRecordsToVcf(std::vector<vcfRecordInfoReads> & recordsInfo,std::string vcf_file){
+    /*
+    * This function is used to write the records to the VCF file
+    * @param recordsInfo: The records information
+    * @param vcf_file: The VCF file to write to
+    * @return: none
+    *   
+    */
     htsFile* vcf_temp = hts_open(vcf_file.c_str(), "w");
     if (vcf_temp == NULL){
-        std::cerr << "Error opening VCF file" << std::endl;
+        spdlog::error("Error opening VCF file");
     }
     // add the header to the file
     if (bcf_hdr_write(vcf_temp, this->vcf_header) != 0) {
@@ -373,7 +389,7 @@ void TandemTwister::writeRecordsToVcf(std::vector<vcfRecordInfoReads> & recordsI
 
         int ret = bcf_update_format_string(this->vcf_header, vcf_record, "SP", spans, bcf_hdr_nsamples(this->vcf_header));
         if (ret != 0){
-            std::cerr << "Error updating SP field" << std::endl;
+            spdlog::error("Error updating SP field");
         }
 
         // toatal number of reads in the clusters sum tmpia
@@ -401,8 +417,7 @@ void TandemTwister::writeRecordsToVcf(std::vector<vcfRecordInfoReads> & recordsI
  
         bcf_destroy(vcf_record);
         } catch (const std::exception& e) {
-            std::cout << "region: " << recordInfo.region << std::endl;
-            std::cerr << "Error writing VCF record: " << e.what() << std::endl;
+            spdlog::error("Error writing VCF record: {} with exception: {}", recordInfo.region, e.what());
         }
     }
     hts_close(vcf_temp);
@@ -435,9 +450,16 @@ uint16_t genotype_allele_assembly(const std::vector<uint16_t> &ref_ids, const st
 
 
 void TandemTwister::writeRecordsToVcfAssembly(std::vector<vcfRecordInfoAssembly> & recordsInfo,std::string vcf_file){
+    /*
+    * This function is used to write the records to the VCF file for the assembly input
+    * @param recordsInfo: The records information
+    * @param vcf_file: The VCF file to write to
+    * @return: none
+    *   
+    */
     htsFile* vcf_temp = hts_open(vcf_file.c_str(), "w");
     if (vcf_temp == NULL){
-        std::cerr << "Error opening VCF file" << std::endl;
+        spdlog::error("Error opening VCF file");
     }
     if (bcf_hdr_write(vcf_temp, this->vcf_header) != 0) {
         fprintf(stderr, "Error writing VCF header.\n");
@@ -476,6 +498,7 @@ void TandemTwister::writeRecordsToVcfAssembly(std::vector<vcfRecordInfoAssembly>
         bcf_update_info_string(this->vcf_header, vcf_record, "CN_ref", ref_CN.c_str());
         
         uint32_t *tmpia = (uint32_t*)malloc(bcf_hdr_nsamples(this->vcf_header)*1*sizeof(uint32_t));
+
         // Set genotypes for each sample
         uint16_t genotype = genotype_allele_assembly(recordInfo.motif_occurrences_ref, recordInfo.motif_occurrences_allele);
         switch (genotype){
@@ -486,8 +509,8 @@ void TandemTwister::writeRecordsToVcfAssembly(std::vector<vcfRecordInfoAssembly>
                 tmpia[0] = bcf_gt_unphased(1);
                 break;
             default:
-                std::cerr << "Error in genotyping" << std::endl;
-
+                spdlog::error("Error in genotyping");
+                break;
         }
 
         bcf_update_genotypes(this->vcf_header, vcf_record, tmpia, bcf_hdr_nsamples(this->vcf_header) *1);
@@ -515,5 +538,4 @@ void TandemTwister::writeRecordsToVcfAssembly(std::vector<vcfRecordInfoAssembly>
     if (hts_close(vcf_temp) != 0) {
         fprintf(stderr, "Error closing VCF file.\n");
     }
-
 }
