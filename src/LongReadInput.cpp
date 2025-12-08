@@ -1,18 +1,17 @@
-// candidate regions to compare to :
-// chr1:109,564-109,614
-// chr1:108444-108469,chr1:109564-109614 
-
 #include "include/TandemTwister.hpp"
 #include <thread>
-// import logging module
 #include <iostream>
-// time 
 #include <chrono>
 #include <limits>
 #include <array>
 
-namespace {
 
+namespace {
+    /*
+    * This namespace is used to colorize the motifs for debugging
+    * @param: none
+    * @return: none
+    */
 #ifdef _WIN32
     constexpr const char* ANSI_RESET = "";
     std::string colorizeSegment(const std::string& content, const char* /*color_code*/) {
@@ -49,7 +48,17 @@ namespace {
                                  const std::vector<std::vector<Interval>>& removedRuns,
                                  const std::vector<std::string>& motifs,
                                  const std::string& sequence) {
+        /*
+        * This function is used to visualize the motif runs for debugging
+        * @param intervals: The intervals to visualize
+        * @param keptRuns: The kept runs
+        * @param removedRuns: The removed runs
+        * @param motifs: The motifs to visualize
+        * @param sequence: The sequence to visualize
+        * @return: none
+        */
         if (sequence.empty()) {
+            spdlog::debug("visualizeMotifRunsDebug: sequence is empty");
             return;
         }
 
@@ -304,7 +313,7 @@ std::vector<Interval> TandemTwister::genotype_reference(std::string &regionWithP
      */
     seq = std::string(fai_fetch(fai, regionWithPadding.c_str(), &len));  
     if (seq.empty()) {
-        std::cerr << "Failed to fetch sequence for region " << regionWithPadding << std::endl;
+        spdlog::error("Failed to fetch sequence for region {}", regionWithPadding);
         return std::vector<Interval>();
     }
     //std::unordered_map<char, uint16_t> nucleotides_occurences;
@@ -312,34 +321,6 @@ std::vector<Interval> TandemTwister::genotype_reference(std::string &regionWithP
    
     path_reference = findBestPath(seq, motifs, this->match_score, this->mismatch_score, this->gap_score, lcp);
     return path_reference;
-}
-
-
-
-
-std::string  TandemTwister::generate_phasing_results(std::vector<std::tuple<std::string,std::vector<Interval>,std::string>> & first_cluster, std::vector<std::tuple<std::string,std::vector<Interval>,std::string>> & second_cluster ,std::vector<std::pair<std::string,std::vector<Interval>>> &noise_cluster , unsigned int CN_first, unsigned int CN_second, const std::string& region) {
-    /**
-     * Generate the phasing results
-     * @param first_cluster: The first cluster
-     * @param second_cluster: The second cluster
-     * @param noise_cluster: The noise cluster
-     * @param CN_first: The copy number of the first cluster
-     * @param CN_second: The copy number of the second cluster
-     * @param region: The region
-     * @return: The phasing results
-     */
-
-    std::string phasing_result = "";
-    for (const auto& cluster : first_cluster) {
-        phasing_result += region  + "\t" + std::get<0>(cluster) + "\t" + "0" + "\t" + std::to_string(std::get<1>(cluster).size())  + "\t" + std::to_string(CN_first) +  "\n";
-    }
-    for (const auto& cluster : second_cluster) {
-        phasing_result += region  + "\t" +  std::get<0>(cluster) + "\t" + "1" + "\t" + std::to_string(std::get<1>(cluster).size())  + "\t" + std::to_string(CN_second) + "\n";
-    }
-    for (const auto& cluster : noise_cluster) {
-        phasing_result += region  + "\t" + cluster.first + "\t" + "-1" + "\t" + std::to_string(cluster.second.size())  + "\t" + "-1" + "\n";
-    }
-    return phasing_result;
 }
 
 
@@ -504,8 +485,8 @@ std::tuple<uint32_t, uint32_t, uint16_t> TandemTwister::findMostOccurringCopyNum
             return a.second < b.second;
         });
     spdlog::debug("maxElement: copyNumber = {}, frequency = {}", maxElement->first, maxElement->second);
+
     // get the second most occuring copy number
-    // Properly find the second most frequent element distinct from maxElement
     auto secondMaxElement = frequencyMap.end();
     uint32_t secondMaxFreq = 0;
     for (const auto& entry : frequencyMap) {
@@ -564,6 +545,9 @@ std::tuple<uint32_t, uint32_t, uint16_t> TandemTwister::findMostOccurringCopyNum
     spdlog::debug("Index of the mostOccusring copy number is {}: " ,index );
     return std::make_tuple(mostOccurringCopyNumber_int, frequency, index);
 }
+
+
+
 std::tuple<uint32_t, uint32_t, uint16_t> TandemTwister::findMedianCopyNumber(const std::vector<std::pair<std::string, std::vector<Interval>>>& cluster) {
     /**
      * Find the median copy number in the cluster
@@ -597,22 +581,6 @@ std::tuple<uint32_t, uint32_t, uint16_t> TandemTwister::findMedianCopyNumber(con
 }
 
 
-void TandemTwister::print_dashes_representation(const std::string& read_name, const std::string& cut_read, const std::vector<Interval>& path) {
-    /**
-     * this function is a helper function to print the dashes representation of the read
-     * @param read_name: The name of the read
-     * @param cut_read: The cut read
-     * @param path: The path to print the dashes representation
-     */
-    if (path.empty()) {
-        return;
-    }
-    std::string read_seq(cut_read.length(), '-');
-    for (const auto& interval : path) {
-        read_seq.replace(interval.start, interval.end - interval.start, cut_read.substr(interval.start-1, interval.end - interval.start+1));
-    }
-    std::cout << read_name << "\t" << read_seq << std::endl;
-}
 
 void TandemTwister::cluster_by_features(const std::string& chr, 
                                         std::vector<std::tuple<std::string, std::vector<Interval>, uint8_t>>& reads_intervals, 
@@ -680,16 +648,24 @@ void TandemTwister::get_hp_tag(uint8_t *&hp_tag, bam1_t *reads, uint32_t &hp_val
 }
 
 std::string get_read_features_str(const arma::rowvec& read_features) {
+    /*
+    * This function is used to get the read features as a string
+    * @param read_features: The read features
+    * @return: The read features as a string
+    *   
+    */
     std::string read_features_str = "";
     for (uint16_t i = 4; i < read_features.n_cols; ++i) {
         read_features_str += fmt::format("{} ", read_features(i));
     }
     return read_features_str;
 }
+
+
 regionResult TandemTwister::processLongReads(samFile* &fp, hts_itr_t* &iter,const size_t start_pos, const size_t end_pos, const std::string& region, 
                                     std::vector<std::string>& motifs, uint16_t motif_size, ::string &chr,
                                     std::vector<std::pair<uint32_t, uint32_t>> &tandem_runs,
-                                    std::string &region_phasing_result, std::string &cut_reads_fasta, const std::vector<uint16_t>& lcp) {
+                                    std::string &cut_reads_fasta, const std::vector<uint16_t>& lcp) {
     /**
      * Process long reads
      * @param fp: The file pointer
@@ -700,7 +676,6 @@ regionResult TandemTwister::processLongReads(samFile* &fp, hts_itr_t* &iter,cons
      * @param motifs: The motifs
      * @param chr: The chromosome
      * @param tandem_runs: The tandem runs
-     * @param region_phasing_result: The region phasing result
      * @param num_reads: The number of reads
      * @param cut_reads_fasta: The cut reads in FASTA format
      * @param lcp: The longest common prefix array
@@ -1106,9 +1081,7 @@ regionResult TandemTwister::processLongReads(samFile* &fp, hts_itr_t* &iter,cons
     spdlog::debug("Copy numbers: {} {}", copy_numbers[0], copy_numbers[1]);
     
 
-    if (this->keep_phasing_results){
-        region_phasing_result += generate_phasing_results(clusters[0], clusters[1], noise_cluster, copy_numbers[0], copy_numbers[1],region); 
-    }
+
     region_results = regionResult{clusters, noise_cluster, alt_seqs, indices_consensus_read, copy_numbers, cn_occurences_in_cluster, num_reads_covering_TR};
     reads_intervals.clear();
     reads_sequences.clear();
@@ -1117,7 +1090,7 @@ regionResult TandemTwister::processLongReads(samFile* &fp, hts_itr_t* &iter,cons
 
 
 
-std::tuple<std::vector<std::string> ,std::vector<vcfRecordInfoReads>> TandemTwister::process_chunk_reads(size_t start_dict, size_t end_dict, samFile* fp, bam_hdr_t* h, hts_idx_t* idx, faidx_t* fai,std::string & cut_reads_fasta) {
+std::vector<vcfRecordInfoReads> TandemTwister::process_chunk_reads(size_t start_dict, size_t end_dict, samFile* fp, bam_hdr_t* h, hts_idx_t* idx, faidx_t* fai,std::string & cut_reads_fasta) {
     /**
      * Process chunk reads
      * @param start_dict: The start dictionary
@@ -1127,7 +1100,7 @@ std::tuple<std::vector<std::string> ,std::vector<vcfRecordInfoReads>> TandemTwis
      * @param idx: The index
      * @param fai: The FASTA index
      * @param cut_reads_fasta: The cut reads in FASTA format
-     * @return: A tuple containing the phasing results, the genotype results, and the genotype records
+     * @return: A vector of genotype records
      */
 
     std::vector<Interval> path_reference;
@@ -1137,11 +1110,9 @@ std::tuple<std::vector<std::string> ,std::vector<vcfRecordInfoReads>> TandemTwis
     uint32_t end_pos= 0; // this is the end position of the region to extract reads from
     uint32_t ref_seq_len = 0; // length of the reference sequence
     std::string  seq = "";
-    std::string region_phasing_result; // this is the phasing result for the region
     // std::string region_genotype_result; // this is the genotype result for the region in Bed format
     std::vector<std::string> chunk_genotype_results; // this is a vector of genotype results for the regions for each process
     std::vector<vcfRecordInfoReads> chunk_genotype_records; // this is a vector of genotype results for the regions for each process
-    std::vector<std::string> chunk_phasing_results;
     std::string TR_type ="";
     hts_itr_t* iter = nullptr;
     uint16_t motif_size = 0;
@@ -1202,7 +1173,6 @@ std::tuple<std::vector<std::string> ,std::vector<vcfRecordInfoReads>> TandemTwis
             tandem_runs_positions.clear();
             buffer = tandem_runs[0][0].start < 2 ? 1 : 2;
             for (auto& tandem_run : tandem_runs) {
-                // print_dashes_representation(std::get<0>(this->TR_regions[j]).c_str(), seq, tandem_run);
                 CN_reference_all_runs += tandem_run.size();
                 tandem_runs_positions.emplace_back(std::make_pair(tandem_run[0].start + start_pos - buffer, tandem_run.back().end + start_pos -1 ));
             }
@@ -1211,65 +1181,83 @@ std::tuple<std::vector<std::string> ,std::vector<vcfRecordInfoReads>> TandemTwis
         tandem_runs.clear();
         iter = sam_itr_querys(idx,h, updated_region.c_str());
         if (iter == NULL) {
-                std::cerr << "Failed to fetch iterator for region " << std::get<0>(this->TR_regions[j]) << std::endl;
+                spdlog::error("Failed to fetch iterator for region {}", std::get<0>(this->TR_regions[j]));
         }
 
-
+        // initialize the result region
         std::string result_region = "";
+        // get the region
         std::string region = std::get<0>(this->TR_regions[j]);
+        // initialize the recordInfo
         vcfRecordInfoReads recordInfo("", {}, {}, {}, {}, {},{},{}, "", "", "", 0, 0, 0, {});
+        // initialize the reference coordinates
         std::vector<std::string> ref_cord = {};
+        // initialize the reference sequence
         std::string reference_seq = seq;
+        // initialize the motif ids for the alleles
         std::vector<std::vector<uint16_t>> motif_ids_alleles = {};
+        // initialize the motif coordinates for the alleles
         std::vector<std::vector<std::string>> motif_cords_alleles = {};
+        // initialize the cluster sizes
         std::vector<std::uint16_t> cluster_sizes = {};
+        // clear the sequence
         seq.clear();
-        regionResult region_results = processLongReads(fp, iter, start_pos, end_pos, region,  motifs,motif_size, chr,tandem_runs_positions,region_phasing_result,cut_reads_fasta,lcp);//
+        // process the long reads
+        regionResult region_results = processLongReads(fp, iter, start_pos, end_pos, region,  motifs,motif_size, chr,tandem_runs_positions,cut_reads_fasta,lcp);//
+        // get the motif ids for the reference
         std::vector<uint16_t> motif_ids_reference = get_motif_ids(path_reference);
+        // get the reference coordinates
         for(const auto &interval : path_reference){
                 ref_cord.push_back("(" + std::to_string(interval.start) + "-" + std::to_string(interval.end) + ")");
         }
-  
+        // if the clusters are empty then set the recordInfo to the empty record
         if (region_results.clusters[0].empty() && region_results.clusters[1].empty()) {
             recordInfo = vcfRecordInfoReads(region, motifs, {{},{}}, motif_ids_reference, {{},{}}, ref_cord, {0,0},{"",""}, reference_seq, TR_type, chr, static_cast<uint32_t>(start_pos), 0, 0, {0,0});
         }
         else {
             ref_seq_len = 0;
-            chunk_phasing_results.push_back(region_phasing_result);
-            region_phasing_result.clear();
+            // iterate over the clusters
             for (uint16_t i = 0; i < region_results.clusters.size(); ++i) {
                 auto &cluster = region_results.clusters[i];
                 if (cluster.empty()) {
+                    // if the cluster is empty then set the cluster sizes to 0
                     cluster_sizes.push_back(0);
                     motif_ids_alleles.push_back({});
                     motif_cords_alleles.push_back({});
                     continue;
                 }
+                // add the cluster size to the cluster sizes
                 cluster_sizes.push_back(cluster.size());
                 std::vector<uint16_t> motif_ids_allele = {};
                 std::vector<std::string> motif_ids_allele_cord = {};
+                // iterate over the intervals in the cluster to get the motif ids and coordinates
                 for (const auto &interval : std::get<1>(cluster[region_results.indices_consensus_read[i]])) {
                     motif_ids_allele.push_back(interval.motif_id);
                     motif_ids_allele_cord.push_back("(" + std::to_string(interval.start) + "-" + std::to_string(interval.end) + ")");
                 }
+                // update the motif ids and coordinates for the alleles
                 motif_ids_alleles.push_back(motif_ids_allele);
                 motif_cords_alleles.push_back(motif_ids_allele_cord);
             }
             if (motif_ids_alleles.size() == 1) {
+                // if there is only one cluster then set the motif ids and coordinates  for the second cluster to the first cluster
                 motif_ids_alleles.push_back(motif_ids_alleles[0]);
                 motif_cords_alleles.push_back(motif_cords_alleles[0]);
             }
-
+            // return the recordInfo
             recordInfo = vcfRecordInfoReads(region, motifs,motif_ids_alleles,  motif_ids_reference, motif_cords_alleles, ref_cord, region_results.copy_numbers, region_results.alt_seqs,  reference_seq, TR_type, chr, static_cast<uint32_t>(start_pos), CN_reference_all_runs, region_results.num_reads_covering_TR,cluster_sizes);
         }
 
         hts_itr_destroy(iter);
+        // add the recordInfo to the chunk genotype records
         chunk_genotype_records.push_back(recordInfo);
+        // clear the tandem runs positions
         tandem_runs_positions.clear();
+        // clear the CN reference all runs
         CN_reference_all_runs = 0;
 
     }
-    return std::make_tuple(chunk_phasing_results,chunk_genotype_records);
+    return chunk_genotype_records;
 }
 
 
@@ -1289,7 +1277,6 @@ void TandemTwister::processRegionsForLongReadsInput() {
             uint32_t start = i * num_of_regions;
             uint32_t end = (i == num_processes - 1) ? this->TR_regions.size() : (i + 1) * num_of_regions;
             std::vector <std::string> cut_reads_chunk;
-            std::tuple<std::vector<std::string> ,std::vector<vcfRecordInfoReads>>  results_chunk;
             samFile* fp = NULL;
             bam_hdr_t* h = NULL;
             hts_idx_t* idx = NULL;
@@ -1299,13 +1286,13 @@ void TandemTwister::processRegionsForLongReadsInput() {
 
             try{
                 std::string cut_reads_fasta = "";
-                results_chunk = process_chunk_reads(start, end,fp,h,idx,fai,cut_reads_fasta);
+                std::vector<vcfRecordInfoReads> chunk_genotype_records = process_chunk_reads(start, end,fp,h,idx,fai,cut_reads_fasta);
                 // open a temp file to write the cut reads to
                 if (this->keep_cut_sequence){
                     std::string cut_reads_file = this->output_path + "cut_reads_" + this->sampleName + "_" + this->reads_type + "_" + std::to_string(i) + ".fasta";
                     std::ofstream outfile_cutReads(cut_reads_file);
                     if (!outfile_cutReads.is_open()) {
-                        std::cerr << "Failed to open file " << cut_reads_file << std::endl;
+                        spdlog::error("Failed to open file {}", cut_reads_file);
                         exit(1);
                     }
                     outfile_cutReads << cut_reads_fasta;
@@ -1313,43 +1300,59 @@ void TandemTwister::processRegionsForLongReadsInput() {
                     outfile_cutReads.close();
                 }
                 
-                if (this->keep_phasing_results){
-                    std::string phasing_file = this->output_path + "phasing_" + this->sampleName + "_" + this->reads_type + "_" + std::to_string(i) + ".tsv";
-                    std::ofstream outfile_phasing(phasing_file);
-                    if (!outfile_phasing.is_open()) {
-                        std::cerr << "Failed to open file " << phasing_file << std::endl;
-                        exit(1);
-                    }
-                    for (const std::string &phasing_result : std::get<0>(results_chunk)) {
-
-                        outfile_phasing << phasing_result;
-               
-                    }
-                    outfile_phasing.flush();
-                    outfile_phasing.close();
-                }
+   
 
                 std::string vcf_file = this->output_path  + this->sampleName + "_" + this->reads_type + "_" + std::to_string(i) + ".vcf";
                 // print the results_chunk
               
-                writeRecordsToVcf(std::get<1>(results_chunk),vcf_file);
+                writeRecordsToVcf(chunk_genotype_records,vcf_file);
+                // Measure and write memory stats before exit
+                {
+                    double vm, rss;
+                    unsigned long vsize;
+                    long rss_val;
+                    {
+                        std::string ignore;
+                        std::ifstream ifs("/proc/self/stat", std::ios_base::in);
+                        ifs >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore
+                                >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore
+                                >> ignore >> ignore >> vsize >> rss_val;
+                    }
+                    long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024;
+                    vm = vsize / 1024.0;
+                    rss = rss_val * page_size_kb;
+                    
+                    std::string mem_file = this->output_path + "mem_stats_" + this->reads_type + "_" + std::to_string(i) + ".txt";
+                    std::ofstream mem_ofs(mem_file);
+                    if (mem_ofs.is_open()) {
+                        mem_ofs << vm << " " << rss << std::endl;
+                        mem_ofs.close();
+                    }
+                }
+                // close the output file
                 outfile.close();
+                // close the BAM file
                 hts_close(fp);
+                // destroy the header
                 bam_hdr_destroy(h);
+                // destroy the index
                 hts_idx_destroy(idx);
+                // destroy the FASTA index
                 fai_destroy(fai);
+                // exit the process
                 exit(0);
             }
             catch (const std::runtime_error& e) {
-                std::cerr << e.what() << std::endl;
+                spdlog::error("Error: could not fork: {}", e.what());
+                // exit the process with error
                 exit(1);
             }          
         }
         else if (pid < 0) {
-            std::cerr << "Error: could not fork" << std::endl;
+            spdlog::error("Error: could not fork");
             return;
         }
-        else {
+        else {  
             pids.push_back(pid);
         }
     }
@@ -1361,7 +1364,6 @@ void TandemTwister::processRegionsForLongReadsInput() {
 
     std::string cut_reads_fasta = "";
     std::string genotype_result = "";
-    std::string phasing_result = "";
     std::string vcf_result = "";
 
     // open the main vcf file
@@ -1369,7 +1371,7 @@ void TandemTwister::processRegionsForLongReadsInput() {
     // write the this->vcf_header to the vcf file
 
     if (outfile_vcf == NULL) {
-        std::cerr << "Failed to open file " << this->output_file_vcf << std::endl;
+        spdlog::error("Failed to open file {}", this->output_file_vcf);
         exit(1);
     }
     if (bcf_hdr_write(outfile_vcf, this->vcf_header) != 0) {
@@ -1379,7 +1381,7 @@ void TandemTwister::processRegionsForLongReadsInput() {
 
     
     if (outfile_vcf == NULL) {
-        std::cerr << "Failed to open file " << vcf_result << std::endl;
+        spdlog::error("Failed to open file {}", vcf_result);
         exit(1);
     }
     
@@ -1391,48 +1393,42 @@ void TandemTwister::processRegionsForLongReadsInput() {
         std::ifstream infile_cutReads(cut_reads_file_chunk);
         if (this->keep_cut_sequence){
             if (!infile_cutReads.is_open()) {
-                std::cerr << "Failed to open file " << cut_reads_file_chunk << std::endl;
+                spdlog::error("Failed to open file {}", cut_reads_file_chunk);
                 exit(1);
             }
         } 
-
-        std::string phasing_file_chunk = this->output_path + "phasing_" + this->sampleName + "_"+ this->reads_type + "_" + std::to_string(i) + ".tsv";
-        std::ifstream infile_phasing(phasing_file_chunk);
-        if (this->keep_phasing_results){
-
-        if (!infile_phasing.is_open()) {
-            std::cerr << "Failed to open file " << phasing_file_chunk << std::endl;
-            exit(1);
-        }
-
-        }
   
         std::string vcf_file_chunk = this->output_path + this->sampleName + "_" + this->reads_type + "_" + std::to_string(i) + ".vcf";
         htsFile* infile_vcf = hts_open(vcf_file_chunk.c_str(), "r");
-        
+        // open the VCF file
         if (infile_vcf == NULL) {
-            std::cerr << "Failed to open file " << vcf_file_chunk << std::endl;
+            spdlog::error("Failed to open file {}", vcf_file_chunk);
             continue; // Skip this file but continue with others
         }
         
         bcf_hdr_t *hdr = bcf_hdr_read(infile_vcf);
         if (!hdr) {
-            std::cerr << "Error: Unable to read header of the VCF file " << vcf_file_chunk << std::endl;
+            spdlog::error("Error: Unable to read header of the VCF file {}", vcf_file_chunk);
             hts_close(infile_vcf);
             continue;
         }
         
+        // initialize the record
         bcf1_t *rec = bcf_init();
+        // read the records from the VCF file
         while (bcf_read(infile_vcf, hdr, rec) == 0) {
             bcf_unpack(rec, BCF_UN_ALL);
             
-            // Create a copy of the record
+            // create a copy of the record
             bcf1_t *rec_copy = bcf_dup(rec);
             bcf_unpack(rec_copy, BCF_UN_ALL);
             
+            // get the chromosome name
             std::string chrom = bcf_hdr_id2name(hdr, rec_copy->rid);
+            // get the reference ID
             int rid = rec_copy->rid; // Reference ID for proper chromosome ordering
             
+            // add the record to the records with position
             records_with_pos.emplace_back(chrom, rec_copy->pos, rid, rec_copy);
         }
         
@@ -1444,68 +1440,60 @@ void TandemTwister::processRegionsForLongReadsInput() {
         
 
 
+        // read the cut reads from the file
         std::stringstream buffer;
         buffer << infile_cutReads.rdbuf();
         cut_reads_fasta += buffer.str();
+        // read the genotype result from the file
         std::stringstream buffer2;
-        // buffer2 << infile.rdbuf();
         genotype_result += buffer2.str();
-        std::stringstream buffer3;
-        buffer3 << infile_phasing.rdbuf();
-        phasing_result += buffer3.str();
-        std::stringstream buffer4;
         infile_cutReads.close();
-        // infile.close();
-        infile_phasing.close();
+        // remove the cut reads file and the VCF file
         std::remove(cut_reads_file_chunk.c_str());
-        std::remove(phasing_file_chunk.c_str());
         std::remove(vcf_file_chunk.c_str());
 
     }
-    // Sort all records by chromosome and position
+    // sort all records by chromosome and position
     std::sort(records_with_pos.begin(), records_with_pos.end(),
     [](const auto& a, const auto& b) {
-        // First compare by reference ID (rid) - this ensures correct chromosome order
+        // compare by reference ID (rid) - this ensures correct chromosome order
         if (std::get<2>(a) != std::get<2>(b)) {
             return std::get<2>(a) < std::get<2>(b);
         }
-        // Then compare by position
+        // compare by position
         return std::get<1>(a) < std::get<1>(b);
     });
 
     
     
-    // Write sorted records to final VCF
+    // write sorted records to final VCF
     for (auto& record_data : records_with_pos) {
         bcf1_t* rec = std::get<3>(record_data);
         if (bcf_write(outfile_vcf, this->vcf_header, rec) < 0) {
-            std::cerr << "Error writing VCF record to file." << std::endl;
+            spdlog::error("Error writing VCF record to file.");
         }
         bcf_destroy(rec);
     }
     // gzip the vcf file
     if (this->keep_cut_sequence){
         this->outfile_cutReads << cut_reads_fasta;
-        outfile_cutReads.flush();
-        outfile_cutReads.close();
+        this->outfile_cutReads.flush();
+        this->outfile_cutReads.close();
     }
     this->outfile << genotype_result;
-    this->outfile_phasing << phasing_result;
-
-    this->outfile_phasing.flush();
     this->outfile.flush();
 
     this->outfile.close();
-    this->outfile_phasing.close();
-    
+    // destroy the header
     bcf_hdr_destroy(this->vcf_header);
+    // close the vcf file
     bcf_close(outfile_vcf);
 
 
-    // index the vcf file
+    // gzip the vcf file
     std::string vcf_file_index = this->output_file_vcf + ".tbi";
     if (bcf_index_build(this->output_file_vcf.c_str(), 0) != 0) {
-        std::cerr << "Failed to index the vcf file " << this->output_file_vcf << std::endl;
+        spdlog::error("Failed to index the vcf file {}", this->output_file_vcf);
         exit(1);
     }
    

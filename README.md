@@ -173,7 +173,6 @@ tandemtwister [global options] <command> [command options]
 
 ### Global Options
 
-- <code>-tanCon, --tandem_run_threshold</code> &nbsp; Maximum number of bases for merging tandem-repeat runs (default: 2 × motif size).
 - <code>-v, --verbose</code> &nbsp; Verbosity level (0 = error, 1 = critical, 2 = info, 3 = debug).
 - <code>-h, --help</code> &nbsp; Display global help (or command-specific help when issued after a command).
 - <code>--version</code> &nbsp; Print version information and exit.
@@ -200,13 +199,21 @@ tandemtwister [global options] <command> [command options]
   </ul>
 
 #### Correction Parameters
-<ul>
-  <li><code>-cor, --correct</code>: Perform genotype calling correction (CCS Default: false, CLR/ONT Default: true)</li>
-  <li><code>-crs, --consensus_ratio_str</code>: Min fraction of reads in a cluster that must call an interval (STR) (Default: 0.3)</li>
-  <li><code>-crv, --consensus_ratio_vntr</code>: Min fraction of reads in a cluster that must call an interval (VNTR) (Default: 0.3)</li>
-  <li><code>-roz, --removeOutliersZscore</code>: Remove outliers for phasing (Default: false)</li>
-  <!-- <li><code>-rtr, --refineTrRegions</code>: Refine tandem repeat regions (Default: true)</li> -->
-</ul>
+<div style="margin-left:2em">
+  <p><strong>Read-based Correction Parameters</strong></p>
+  <ul>
+    <li><code>-cor, --correct</code>: Perform genotype calling correction based on the consensus from sequencing reads (CCS Default: false, CLR/ONT Default: true)</li>
+    <li><code>-crs, --consensus_ratio_str</code>: Minimum fraction of reads in a cluster required for a consensus call in STR regions (Default: 0.3)</li>
+    <li><code>-crv, --consensus_ratio_vntr</code>: Minimum fraction of reads in a cluster required for a consensus call in VNTR regions (Default: 0.3)</li>
+    <li><code>-roz, --removeOutliersZscore</code>: Remove outlier reads for phasing based on Z-score (Default: false)</li>
+  </ul>
+
+  <p><strong>Reference-based Correction Parameters</strong></p>
+  <ul>
+    <li><code>-rtr, --refineTrRegions</code>: Refine the coordinates of tandem repeat regions using the reference genome (Default: false)</li>
+    <li><code>-tanCon, --tandem_run_threshold</code>: Maximum number of bases for merging tandem-repeat runs during reference-based refinement (Default: 2 × motif size)</li>
+  </ul>
+</div>
 
 #### Clustering Parameters
 <ul>

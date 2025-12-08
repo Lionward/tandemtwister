@@ -149,7 +149,7 @@ void printVersion() {
     printTitle("TandemTwister");
     const std::string indent = "  ";
     std::cerr << indent << styleLabel("Purpose") << ": A tool for genotyping tandem repeats from long reads and aligned genome input" << std::endl;
-    std::cerr << indent << styleLabel("Version") << ": 2.0.1" << std::endl;
+    std::cerr << indent << styleLabel("Version") << ": 1.0.0" << std::endl;
     std::cerr << indent << styleLabel("Author") << ": Lion Ward Al Raei" << std::endl;
     std::cerr << indent << styleLabel("Contact") << ": Lionward.alraei@gmail.com" << std::endl;
     std::cerr << indent << styleLabel("Institute") << ": Max Planck Institute for Molecular Genetics" << std::endl;
@@ -364,6 +364,7 @@ void printGermlineSomaticDoc(const std::string& activeCommand) {
     printOption("-s, --sex", "Sample sex (0 | female, 1 | male).");
     printOption("-sn, --sample", "Optional sample identifier.");
     printOption("-rt, --reads_type", "Sequencing platform / read type (default: CCS).");
+    printOption("-t, --threads", "Number of threads (default: 1).");
 
     printSectionHeader("Alignment Parameters");
     printOption("-mml, --min_match_ratio_l", "Minimum match ratio for long motifs (default: 0.5).");
@@ -374,19 +375,22 @@ void printGermlineSomaticDoc(const std::string& activeCommand) {
     printSectionHeader("Read Extraction");
     printOption("-s, --output_file_statistics", "Optional phasing summary output file.");
     printOption("-pad, --padding", "Padding around the STR region when extracting reads (default: 0).");
-    printOption("-t, --threads", "Number of threads (default: 1).");
-    printOption("-kpr, --keepPhasingResults", "Persist intermediate phasing results (default: false).");
+    //printOption("-kpr, --keepPhasingResults", "Persist intermediate phasing results (default: false).");
     printOption("-kcr, --keepCutReads", "Retain reads trimmed during preprocessing (default: false).");
     printOption("-minR, --minReadsInRegion", "Minimum spanning reads required per region (default: 2).");
     printOption("-btg, --bamIsTagged", "Treat BAM as pre-tagged/phased (default: false).");
     printOption("-qs, --quality_score", "Minimum read quality score (default: 10, max: 60).");
 
     printSectionHeader("Correction");
+    printSectionHeader("Reference-based Correction Parameters");
+    printOption("-rtr, --refineTrRegions", "Refine tandem repeat regions (default: false).");
+    printOption("-tanCon, --tandem_run_threshold", "Maximum number of bases for merging tandem-repeat runs during reference-based refinement (default: 2 × motif size).");
+
+    printSectionHeader("Read-based Correction Parameters");
     printOption("-cor, --correct", "Enable genotype correction (CCS default: false; CLR/ONT default: true).");
     printOption("-crs, --consensus_ratio_str", "Minimum consensus ratio for STR correction (default: 0.3).");
     printOption("-crv, --consensus_ratio_vntr", "Minimum consensus ratio for VNTR correction (default: 0.3).");
     printOption("-roz, --removeOutliersZscore", "Remove outliers before phasing (default: false).");
-    // printOption("-rtr, --refineTrRegions", "Refine tandem repeat regions (default: true).");
 
     printSectionHeader("Clustering");
     printOption("-seps, --start_eps_str", "Initial epsilon for STR clustering (default: 0.2).");

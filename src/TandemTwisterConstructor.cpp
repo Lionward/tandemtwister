@@ -244,7 +244,6 @@ TandemTwister::TandemTwister(int argc, char *argv[]) {
         }
         this->cluster_iter = getArg<uint16_t>(args, "-ci", "--cluster_iter", 40);
         this->cluster_iter = this->cluster_iter == 0 ? 1 : this->cluster_iter;
-        this->keep_phasing_results = getArg<bool>(args, "-kpr", "--keepPhasingResults", false);
         this->keep_cut_sequence = getArg<bool>(args, "-kcr", "--keepCutReads", false);
         this->remove_outliers_zscore = getArg<bool>(args, "-roz", "--removeOutliersZscore", false);
         this->refineTrRegions = getArg<bool>(args, "-rtr", "--refineTrRegions", false);
@@ -267,16 +266,7 @@ TandemTwister::TandemTwister(int argc, char *argv[]) {
             through_error(args,"Error: min_match_ratio should be between 0 and 1");
         }
         
-        if (this->keep_phasing_results == true) {
-            std::string output_file_phasing = output_path + "haps_phasing_" + output_file.substr(output_file.find_last_of("/") + 1);
-            std::ofstream outfile_phasing(output_file_phasing);
-            if (!outfile_phasing.is_open()) {
-                std::cerr << "Error: could not open the pahsing file " << output_file_phasing << std::endl;
-                exit(1);
-            }
-            this->outfile_phasing = std::move(outfile_phasing);
-            this->outfile_phasing << "region\tread_name\tcluster\tCN\tconsensus_CN\n";
-        }
+
 
         this->TR_regions = regions_not_grouped(region_file);
         this->num_threads = this->num_threads > TR_regions.size() ? TR_regions.size(): this->num_threads;

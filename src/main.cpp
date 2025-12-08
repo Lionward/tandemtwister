@@ -71,7 +71,6 @@ int main(int argc, char *argv[]) {
     if (TandemTwister.analysis_type == "somatic" || TandemTwister.analysis_type == "germline") {
         spdlog::info("reads_type: {}", TandemTwister.reads_type);
         spdlog::info("Input reads are {}", TandemTwister.bamIsTagged == true ? "phased" : "not phased");
-        spdlog::info("keep phasing results: {}", TandemTwister.keep_phasing_results == 0 ? "false" : "true");
         spdlog::info("keep cut reads: {}", TandemTwister.keep_cut_sequence == 0 ? "false" : "true");
         spdlog::info("remove outliers z-score: {}", TandemTwister.remove_outliers_zscore == 0 ? "false" : "true");
         spdlog::info("min_match_ratio_l: {}", TandemTwister.min_match_ratio_l);
@@ -112,9 +111,9 @@ int main(int argc, char *argv[]) {
     spdlog::info("========================================");
 
     init_logging(TandemTwister.verbose);
-    //std::cout << "refine TanRegions: " << (TandemTwister.refineTrRegions == 0 ? "false" : "true") << std::endl;
+    //spdlog::info("refine TanRegions: {}", (TandemTwister.refineTrRegions == 0 ? "false" : "true"));
     if (TandemTwister.refineTrRegions){
-        std::cout << "tandem run threshold: " << TandemTwister.tanCon << std::endl;
+        spdlog::info("tandem run threshold: {}", TandemTwister.tanCon);
     }
     // double rss_gb_before = getRSS();
     if (TandemTwister.analysis_type == "somatic" || TandemTwister.analysis_type == "germline") {
@@ -124,7 +123,7 @@ int main(int argc, char *argv[]) {
         TandemTwister.processRegionsForAssemblyInput();
     }
     else {
-        std::cerr << "Error: bam_type should be either reads or assembly" << std::endl;
+        spdlog::error("Error: bam_type should be either reads or assembly");
         exit(1);
     }
     auto end_time = std::chrono::high_resolution_clock::now();

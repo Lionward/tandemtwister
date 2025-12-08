@@ -152,7 +152,7 @@ void TandemTwister::open_bam_file(const std::string& bam_file, samFile*& fp, bam
      */
     fp = sam_open(bam_file.c_str(), "r");
     if (fp == NULL) {
-        std::cerr << "Failed to open BAM file " << bam_file << std::endl;
+        spdlog::error("Failed to open BAM file {}", bam_file);
         throw std::runtime_error("Error opening BAM file.");
     }
 
@@ -205,7 +205,7 @@ std::vector<std::tuple<std::string, std::vector<std::string>>> TandemTwister::re
     // open the file
     std::ifstream region_file(regionFile);
     if (!region_file.is_open()) {
-        std::cerr << "Error: Unable to open the region file" << std::endl;
+        spdlog::error("Error: Unable to open the region file");
         exit(1);
     }
     
@@ -218,7 +218,7 @@ std::vector<std::tuple<std::string, std::vector<std::string>>> TandemTwister::re
         std::string chr, start, end, motifs;
         
         if (!(iss >> chr >> start >> end >> motifs)) {
-            std::cerr << "Error: Incorrect format in line: " << line << std::endl;
+            spdlog::error("Error: Incorrect format in line: {}", line);
             continue;
         }
         
@@ -312,7 +312,7 @@ std::unordered_map<std::string, std::vector<std::tuple<std::string, std::vector<
 
     std::ifstream region_file(regionFile);
     if (!region_file.is_open()) {
-        std::cerr << "Error: Unable to open the region file" << std::endl;
+        spdlog::error("Error: Unable to open the region file");
         exit(1);
     }
 
@@ -327,7 +327,7 @@ std::unordered_map<std::string, std::vector<std::tuple<std::string, std::vector<
 
 
         if (!(iss >> chr >> start >> end >> motifs)) {
-            std::cerr << "Error: Incorrect format in line: " << line << std::endl;
+            spdlog::error("Error: Incorrect format in line: {}", line);
             continue;
         }
         std::vector<std::string> motifList = split(motifs, ',');
