@@ -258,10 +258,8 @@ public:
     bool correctCalling = false; // if 1 then correct the reads copy number otherwise use the most occuring copy number
     uint16_t  tanCon = 2; // the number of consecutive intervals to be considered a tandem run "2*motif_size"
     std::ofstream outfile;
-    std::ofstream outfile_phasing;
     std::ofstream outfile_cutReads;
     std::unordered_map<std::string, std::string> args;
-    bool keep_phasing_results = false;
     bool keep_cut_sequence = false;
     bool remove_outliers_zscore = false;
     bool refineTrRegions = false;
@@ -346,20 +344,18 @@ public:
         regionResult processLongReads(samFile* &fp, hts_itr_t* &iter,const size_t start_pos, const size_t end_pos, const std::string& region, 
                                     std::vector<std::string>& motifs,uint16_t motif_size, std::string &chr,
                                     std::vector<std::pair<uint32_t, uint32_t>> &tandem_runs,
-                                    std::string &region_phasing_result, std::string &cut_reads_fasta, const std::vector<uint16_t>& lcp);
+                                    std::string &cut_reads_fasta, const std::vector<uint16_t>& lcp);
         void get_hp_tag(uint8_t *&hp_tag, bam1_t *reads, uint32_t &hp_value);
 
         //void process_chunk_ONT(const std::vector<std::tuple<std::string,std::string>>& chunk,  hts_idx_t* idx, bam_hdr_t* h, samFile* fp, faidx_t *fai);
         std::tuple<uint32_t, uint32_t, uint16_t> findMostOccurringCopyNumber(const std::vector<std::tuple<std::string, std::vector<Interval>, std::string>>& cluster);
         std::tuple<uint32_t, uint32_t, uint16_t> findMedianCopyNumber(const std::vector<std::pair<std::string, std::vector<Interval>>>& cluster);
 
-        std::string generate_phasing_results(std::vector<std::tuple<std::string,std::vector<Interval>, std::string>> & first_cluster, std::vector<std::tuple<std::string,std::vector<Interval>, std::string>> & second_cluster,
-                                            std::vector<std::pair<std::string,std::vector<Interval>>> &noise_cluster , unsigned int CN_first, unsigned int CN_second, const std::string& region);
         std::vector<std::pair<uint32_t, uint32_t>> cut_read_in_TR_region(const  uint32_t reference_start,  uint32_t* cigar_data, size_t cigar_length,
                                                                         const std::vector<std::pair<uint32_t,uint32_t> > &tandem_runs);
         //void update_feature_vector(std::vector<vecf>& region_features, char* &cut_read, const std::vector<Interval>& path);
         void update_feature_vector(arma::mat& region_features, char* &cut_read, const std::vector<Interval>& path);
-        std::tuple<std::vector<std::string>, std::vector<vcfRecordInfoReads> > process_chunk_reads(size_t start_dict, size_t end_dict, samFile* fp, bam_hdr_t* h, 
+        std::vector<vcfRecordInfoReads> process_chunk_reads(size_t start_dict, size_t end_dict, samFile* fp, bam_hdr_t* h, 
                                                                                                                            hts_idx_t* idx, faidx_t* fai,std::string & cut_reads_fasta);
         
         void cluster_by_features(const std::string& chr, 
@@ -382,14 +378,13 @@ public:
    
         std::pair<std::vector<Interval> ,std::vector<Interval>>  needlemanWunsch(const std::string& seq1, const std::string& seq2, const AlignmentScores& scores,
                                                                                 const std::vector<Interval> &ref_intervals, const std::vector<Interval> &read_intervals);
-        // std::pair<std::vector<Interval>, std::vector<Interval>> smithWaterman(const std::string& seq1, const std::string& seq2, const AlignmentScores& scores, const std::vector<Interval>& ref_intervals, const std::vector<Interval>& read_intervals);
 
         void print_0_1_matrix(std::vector<std::vector<uint32_t>> clustered_intervals);
         std::vector<Interval> findLongestTandemRun(const std::vector<Interval>& intervals, const uint16_t motif_size);
         std::vector<std::vector<Interval>> findAllTandemRuns(const std::vector<Interval>& intervals, const std::vector<std::string>& motifs, const std::string& sequence);
         bool IsMotifRun(const std::vector<Interval> & intervals, const std::vector<uint16_t>& motif_lengths); //, const unsigned int motif_size
         
-        // phasing functions (consider putting them in a different class)
+        // phasing functions 
         std::tuple<std::vector<std::vector<uint16_t>>, std::vector<uint16_t>> runDBSCAN(const arma::mat &features_matrix_stdandarized,float eps, uint16_t minPts);
         void cluster_reads(arma::mat &region_features,std::vector<std::tuple<std::string,std::vector<Interval>,uint8_t>> &reads_intervals,
                                                             std::vector<std::vector<std::tuple<std::string,std::vector<Interval>,std::string>>> &final_clusters ,

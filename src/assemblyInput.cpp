@@ -434,7 +434,6 @@ void TandemTwister::processRegionsForAssemblyInput() {
 
     std::string cut_reads_fasta = "";
     std::string genotype_result = "";
-    std::string phasing_result = "";
     // open the main vcf file
     
     // Ensure the directory exists
@@ -472,15 +471,6 @@ void TandemTwister::processRegionsForAssemblyInput() {
             }
         }
  
-        std::string phasing_file_chunk = this->output_path + "phasing_" + this->sampleName + "_" + chromosome + ".tsv";
-        std::ifstream infile_phasing(phasing_file_chunk);
-        if (this->keep_phasing_results){
-            if (!infile_phasing.is_open()) {
-                std::cerr << "Failed to open file " << phasing_file_chunk << " results of process " << i << " will be skipped" << std::endl;
-                exit(1);
-            }
-
-        }
 
         
         std::string vcf_file_chunk = this->output_path + this->sampleName + "_" + chromosome + ".vcf";
@@ -514,14 +504,9 @@ void TandemTwister::processRegionsForAssemblyInput() {
         std::stringstream buffer;
         buffer << infile_cutReads.rdbuf();
         cut_reads_fasta += buffer.str();
-        std::stringstream buffer3;
-        buffer3 << infile_phasing.rdbuf();
-        phasing_result += buffer3.str();
         std::stringstream buffer4;
         infile_cutReads.close();
-        infile_phasing.close();
         std::remove(cut_reads_file_chunk.c_str());
-        std::remove(phasing_file_chunk.c_str());
         std::remove(vcf_file_chunk.c_str());
     }
     // Sort all records by chromosome and position
@@ -553,13 +538,9 @@ void TandemTwister::processRegionsForAssemblyInput() {
         outfile_cutReads.close();
     }
     this->outfile << genotype_result;
-    this->outfile_phasing << phasing_result;
-
-    this->outfile_phasing.flush();
     this->outfile.flush();
 
     this->outfile.close();
-    this->outfile_phasing.close();
 
     bcf_hdr_destroy(this->vcf_header);
     bcf_close(outfile_vcf);

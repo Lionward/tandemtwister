@@ -71,7 +71,6 @@ int main(int argc, char *argv[]) {
     if (TandemTwister.analysis_type == "somatic" || TandemTwister.analysis_type == "germline") {
         spdlog::info("reads_type: {}", TandemTwister.reads_type);
         spdlog::info("Input reads are {}", TandemTwister.bamIsTagged == true ? "phased" : "not phased");
-        spdlog::info("keep phasing results: {}", TandemTwister.keep_phasing_results == 0 ? "false" : "true");
         spdlog::info("keep cut reads: {}", TandemTwister.keep_cut_sequence == 0 ? "false" : "true");
         spdlog::info("remove outliers z-score: {}", TandemTwister.remove_outliers_zscore == 0 ? "false" : "true");
         spdlog::info("min_match_ratio_l: {}", TandemTwister.min_match_ratio_l);
