@@ -169,6 +169,22 @@ void TandemTwister::open_bam_file(const std::string& bam_file, samFile*& fp, bam
     }
 }
 
+void TandemTwister::open_reference_file(const std::string& reference_file, faidx_t*& fai) {
+    /**
+     * @brief Open the reference file.
+     * 
+     * This function opens the reference FASTA file and loads its index.
+     * 
+     * @param reference_file Path to the reference FASTA file
+     * @param fai Reference to the FASTA index pointer (will be set)
+     */
+    fai = fai_load(reference_file.c_str());
+    if (fai == NULL) {
+        spdlog::error("Failed to open reference file {}", reference_file);
+        throw std::runtime_error("Error: could not open reference file");
+    }
+}
+
 
 std::vector<std::string> split(const std::string& str, char delimiter) {
     /**

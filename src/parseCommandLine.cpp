@@ -5,9 +5,11 @@
 #include <array>
 #include <unordered_set>
 #include <unordered_map>
+#include <vector>
 #include <cstdlib>
 #include <cstdio>
 
+// for ANSI styling
 #ifdef _WIN32
 #include <io.h>
 #define TT_ISATTY _isatty
@@ -27,44 +29,113 @@ struct CommandInfo {
     const char* description;
 };
 
+struct OptionInfo {
+    std::vector<std::string> flags;  // e.g., {"-b", "--bam"}
+    const char* description;
+    const char* section;  // e.g., "Required Arguments", "Alignment Parameters"
+    bool required;
+    bool command_specific;  // true if only for specific commands
+    std::vector<std::string> commands;  // empty = all commands, or {"germline", "somatic"}
+};
+
+// Command information
 const std::array<CommandInfo, 3> kCommandInfos = {{
     {"germline", "Genotyping tandem repeats from long-read alignments."},
     {"somatic",  "Somatic expansion profiling using long-read alignments."},
     {"assembly", "Genotyping tandem repeats from aligned assembly input."}
 }};
 
+// Data-driven option definitions - single source of truth
+const std::vector<OptionInfo> kAllOptions = {
+    // Commands
+    {{"germline", "--germline"}, "Selects the germline analysis workflow", "Commands", false, false, {}},
+    {{"somatic", "--somatic"}, "Selects the somatic analysis workflow", "Commands", false, false, {}},
+    {{"assembly", "--assembly"}, "Selects the assembly analysis workflow", "Commands", false, false, {}},
+    
+    // Required Arguments (common)
+    {{"-b", "--bam"}, "Path to the BAM file containing aligned reads", "Required Arguments", true, false, {}},
+    {{"-r", "--ref"}, "Reference FASTA file (.fa / .fna)", "Required Arguments", true, false, {}},
+    {{"-m", "--motif_file"}, "Motif definition file (BED / TSV / CSV)", "Required Arguments", true, false, {}},
+    {{"-o", "--output_file"}, "Output file for region, motif, and haplotype copy numbers", "Required Arguments", true, false, {}},
+    {{"-s", "--sex"}, "Sample sex (0 | female, 1 | male)", "Required Arguments", true, false, {}},
+    {{"-sn", "--sample"}, "Optional sample identifier", "Required Arguments", false, false, {}},
+    {{"-rt", "--reads_type"}, "Sequencing platform / read type (default: CCS)", "Required Arguments", false, false, {}},
+    
+    // Required Arguments (germline/somatic specific)
+    {{"-t", "--threads"}, "Number of threads (default: 1)", "Required Arguments", false, true, {"germline", "somatic"}},
+    
+    // Alignment Parameters
+    {{"-mml", "--min_match_ratio_l"}, "Minimum match ratio for long motifs (default: 0.5)", "Alignment Parameters", false, false, {}},
+    
+    // Read Extraction (germline/somatic only) - Note: -s is used for --sex, so statistics uses long form only
+    {{"--output_file_statistics"}, "Optional phasing summary output file", "Read Extraction", false, true, {"germline", "somatic"}},
+    {{"-pad", "--padding"}, "Padding around the STR region when extracting reads (default: 0)", "Read Extraction", false, true, {"germline", "somatic"}},
+    {{"-kcr", "--keepCutReads"}, "Retain reads trimmed during preprocessing (default: false)", "Read Extraction", false, true, {"germline", "somatic"}},
+    {{"-minR", "--minReadsInRegion"}, "Minimum spanning reads required per region (default: 2)", "Read Extraction", false, true, {"germline", "somatic"}},
+    {{"-btg", "--bamIsTagged"}, "Treat BAM as pre-tagged/phased (default: false)", "Read Extraction", false, true, {"germline", "somatic"}},
+    {{"-qs", "--quality_score"}, "Minimum read quality score (default: 10, max: 60)", "Read Extraction", false, true, {"germline", "somatic"}},
+    
+    // Reference-based Correction (germline/somatic only)
+    {{"-rtr", "--refineTrRegions"}, "Refine tandem repeat regions (default: false)", "Reference-based Correction Parameters", false, true, {"germline", "somatic"}},
+    {{"-tanCon", "--tandem_run_threshold"}, "Maximum bases for merging tandem-repeat runs (default: 2 × motif size)", "Reference-based Correction Parameters", false, true, {"germline", "somatic"}},
+    
+    // Read-based Correction (germline/somatic only)
+    {{"-cor", "--correct"}, "Enable genotype correction (CCS default: false; CLR/ONT default: true)", "Read-based Correction Parameters", false, true, {"germline", "somatic"}},
+    {{"-crs", "--consensus_ratio_str"}, "Minimum consensus ratio for STR correction (default: 0.3)", "Read-based Correction Parameters", false, true, {"germline", "somatic"}},
+    {{"-crv", "--consensus_ratio_vntr"}, "Minimum consensus ratio for VNTR correction (default: 0.3)", "Read-based Correction Parameters", false, true, {"germline", "somatic"}},
+    {{"-roz", "--removeOutliersZscore"}, "Remove outliers before phasing (default: false)", "Read-based Correction Parameters", false, true, {"germline", "somatic"}},
+    
+    // Clustering (germline/somatic only)
+    {{"-seps", "--start_eps_str"}, "Initial epsilon for STR clustering (default: 0.2)", "Clustering", false, true, {"germline", "somatic"}},
+    {{"-sepv", "--start_eps_vntr"}, "Initial epsilon for VNTR clustering (default: 0.2)", "Clustering", false, true, {"germline", "somatic"}},
+    {{"-minPF", "--minPts_frac"}, "Minimum read fraction per cluster (default: 0.12)", "Clustering", false, true, {"germline", "somatic"}},
+    {{"-nls", "--noise_limit_str"}, "Noise limit for STR clustering (default: 0.2)", "Clustering", false, true, {"germline", "somatic"}},
+    {{"-nlv", "--noise_limit_vntr"}, "Noise limit for VNTR clustering (default: 0.35)", "Clustering", false, true, {"germline", "somatic"}},
+    {{"-ci", "--cluster_iter"}, "Number of clustering iterations (default: 40)", "Clustering", false, true, {"germline", "somatic"}},
+    
+    // General
+    {{"-v", "--verbose"}, "Verbosity level (0: error, 1: critical, 2: info, 3: debug)", "General", false, false, {}},
+    {{"-h", "--help"}, "Display this help or version information", "General", false, false, {}},
+    {{"--version"}, "Display version information", "General", false, false, {}},
+};
+
+// Convert string to lowercase
 std::string toLower(std::string value) {
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    std::transform(value.begin(), value.end(), value.begin(), 
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return value;
 }
 
+// Print divider
 void printDivider() {
     std::cerr << std::string(80, '-') << std::endl;
 }
 
+// Print title
 void printTitle(const std::string& title) {
     printDivider();
     std::cerr << title << std::endl;
     printDivider();
 }
 
+// Print section header
 void printSectionHeader(const std::string& headline) {
     std::cerr << std::endl;
     std::cerr << headline << std::endl;
     std::cerr << std::string(headline.size(), '-') << std::endl;
 }
 
+// Print option
 void printOption(const std::string& option, const std::string& description) {
     std::cerr << "  " << std::left << std::setw(kOptionColumnWidth) << option << description << std::endl;
 }
 
+// Check if ANSI styling is supported
 bool supportsAnsiStyling() {
     static const bool kSupported = []() {
         auto envTruthy = [](const char* name) -> bool {
             const char* value = std::getenv(name);
-            if (!value || !*value) {
-                return false;
-            }
+            if (!value || !*value) return false;
             return std::string(value) != "0";
         };
 
@@ -73,35 +144,50 @@ bool supportsAnsiStyling() {
             return true;
         }
 
-        if (std::getenv("NO_COLOR") != nullptr) {
-            return false;
-        }
-        if (!TT_ISATTY(TT_FILENO(stderr))) {
-            return false;
-        }
+        if (std::getenv("NO_COLOR") != nullptr) return false;
+        if (!TT_ISATTY(TT_FILENO(stderr))) return false;
         const char* term = std::getenv("TERM");
         return term != nullptr && std::string(term) != "dumb";
     }();
     return kSupported;
 }
 
+// Maybe bold text
 std::string maybeBold(const std::string& text, bool emphasize) {
-    if (!supportsAnsiStyling()) {
-        return text;
-    }
+    if (!supportsAnsiStyling()) return text;
     if (emphasize) {
         return std::string("\033[1;97m") + text + "\033[0m";
     }
     return std::string("\033[1;37m") + text + "\033[0m";
 }
 
+// Style label
 std::string styleLabel(const std::string& label) {
-    if (!supportsAnsiStyling()) {
-        return label;
-    }
+    if (!supportsAnsiStyling()) return label;
     return std::string("\033[1;97m") + label + "\033[0m";
 }
 
+// Print version
+void printVersion() {
+    printTitle("TandemTwister");
+    const std::string indent = "  ";
+    std::cerr << indent << styleLabel("Purpose") << ": A tool for genotyping tandem repeats from long reads and aligned genome input" << std::endl;
+    std::cerr << indent << styleLabel("Version") << ": 1.0.0" << std::endl;
+    std::cerr << indent << styleLabel("Author") << ": Lion Ward Al Raei" << std::endl;
+    std::cerr << indent << styleLabel("Contact") << ": Lionward.alraei@gmail.com" << std::endl;
+    std::cerr << indent << styleLabel("Institute") << ": Max Planck Institute for Molecular Genetics" << std::endl;
+    std::cerr << std::endl;
+}
+
+// Print license notice
+void printLicenseNotice() {
+    printSectionHeader("License & Warranty");
+    std::cerr << "  " << styleLabel("License") << ": BSD 3-Clause" << std::endl; 
+    std::cerr << "  " << styleLabel("Warranty") << ": Provided \"AS IS\" without warranty of any kind." << std::endl;
+    std::cerr << "  " << styleLabel("Usage") << ": For research purposes only; not for diagnostic or clinical use." << std::endl;
+}
+
+// Print commands overview
 void printCommandsOverview(const std::string& activeCommand = "") {
     printSectionHeader("Commands");
     for (const auto& info : kCommandInfos) {
@@ -110,6 +196,104 @@ void printCommandsOverview(const std::string& activeCommand = "") {
     }
 }
 
+// Get options for a specific command and section
+std::vector<const OptionInfo*> getOptionsForCommand(const std::string& command, const std::string& section) {
+    std::vector<const OptionInfo*> result;
+    for (const auto& opt : kAllOptions) {
+        // Skip if section doesn't match
+        if (opt.section != section) continue;
+        
+        // Check if option applies to this command
+        if (opt.command_specific) {
+            if (opt.commands.empty() || 
+                std::find(opt.commands.begin(), opt.commands.end(), command) == opt.commands.end()) {
+                continue;
+            }
+        }
+        result.push_back(&opt);
+    }
+    return result;
+}
+
+// Print options for a section
+void printOptionsForSection(const std::string& command, const std::string& section, 
+                           const std::string& activeCommand = "") {
+    auto options = getOptionsForCommand(command, section);
+    if (options.empty()) return;
+    
+    printSectionHeader(section);
+    
+    for (const auto* opt : options) {
+        // Build option string (e.g., "-b, --bam")
+        std::string optStr;
+        for (size_t i = 0; i < opt->flags.size(); ++i) {
+            if (i > 0) optStr += ", ";
+            optStr += opt->flags[i];
+        }
+        
+        // Special handling for command options
+        if (section == "Commands") {
+            const bool highlight = !activeCommand.empty() && 
+                std::find(opt->flags.begin(), opt->flags.end(), "--" + activeCommand) != opt->flags.end();
+            optStr = maybeBold(opt->flags[0], highlight);
+            if (opt->flags.size() > 1) {
+                optStr += " [" + opt->flags[1] + "]";
+            }
+        }
+        
+        printOption(optStr, opt->description);
+    }
+}
+
+// Print command-specific documentation
+void printCommandDoc(const std::string& command, const std::string& activeCommand = "") {
+    const bool highlight = activeCommand == command || activeCommand.empty();
+    
+    // Usage
+    printSectionHeader("Usage");
+    std::string usage = "tandemtwister " + maybeBold(command, highlight) + 
+                       " [options] -b <input_bam> -m <motif_file> -r <reference_fasta> -o <output_file> -s <sample_sex>";
+    printOption(usage, "");
+    
+    // Define sections in order
+    std::vector<std::string> sections = {
+        "Required Arguments",
+        "Alignment Parameters",
+        "Read Extraction",
+        "Reference-based Correction Parameters",
+        "Read-based Correction Parameters",
+        "Clustering",
+        "General"
+    };
+    
+    // Print each section
+    for (const auto& section : sections) {
+        printOptionsForSection(command, section, activeCommand);
+    }
+}
+
+// Print full documentation
+void printFullDoc(const std::string& activeCommand = "") {
+    
+    printSectionHeader("Usage");
+    printOption("tandemtwister [global options] <command> [command options]", "");
+    
+    printCommandsOverview(activeCommand);
+    
+    printSectionHeader("Getting Started");
+    for (const auto& cmd : kCommandInfos) {
+        const bool highlight = activeCommand == cmd.name;
+        printOption("tandemtwister " + maybeBold(cmd.name, highlight) + " --help", 
+                   "Display " + std::string(cmd.name) + "-specific options.");
+    }
+    
+    printOptionsForSection("", "General", activeCommand);
+    printLicenseNotice();
+}
+
+}  // namespace
+
+// Set command
 void setCommand(std::unordered_map<std::string, std::string>& args,
                 const std::string& command,
                 const std::unordered_map<std::string, std::string>& commandFlags) {
@@ -121,20 +305,14 @@ void setCommand(std::unordered_map<std::string, std::string>& args,
     }
 }
 
-}  // namespace
-
-void printFullDoc(const std::string& activeCommand);
-void printAssemblyDoc(bool emphasizeCommand = false);
-void printGermlineSomaticDoc(const std::string& activeCommand = "");
-void printGermlineDoc(const std::string& activeCommand = "");
-void printLicenseNotice();
-
+// Through error
 void TandemTwister::through_error(std::unordered_map<std::string, std::string>& args, const std::string& message) {
     std::cerr << message << std::endl;
     printUsage(args);
     exit(1);
 }
 
+// Open file
 bool TandemTwister::openFile(const std::string& filename) {
     std::ifstream file(filename);
     if (!file.is_open()) {
@@ -145,20 +323,8 @@ bool TandemTwister::openFile(const std::string& filename) {
     return true;
 }
 
-void printVersion() {
-    printTitle("TandemTwister");
-    const std::string indent = "  ";
-    std::cerr << indent << styleLabel("Purpose") << ": A tool for genotyping tandem repeats from long reads and aligned genome input" << std::endl;
-    std::cerr << indent << styleLabel("Version") << ": 1.0.0" << std::endl;
-    std::cerr << indent << styleLabel("Author") << ": Lion Ward Al Raei" << std::endl;
-    std::cerr << indent << styleLabel("Contact") << ": Lionward.alraei@gmail.com" << std::endl;
-    std::cerr << indent << styleLabel("Institute") << ": Max Planck Institute for Molecular Genetics" << std::endl;
-    
-    std::cerr << std::endl;
-}
-
+// Parse command line - simplified version
 std::unordered_map<std::string, std::string> TandemTwister::parseCommandLine(int argc, char** argv) {
-
     std::unordered_map<std::string, std::string> args;
     if (argc <= 1) {
         printUsage(args);
@@ -172,9 +338,18 @@ std::unordered_map<std::string, std::string> TandemTwister::parseCommandLine(int
         {"--assembly", "assembly"}
     };
 
+    // Build accepted arguments set from kAllOptions
+    std::unordered_set<std::string> accepted_arguments = {"-h", "--help", "--version", "-v", "--verbose"};
+    for (const auto& opt : kAllOptions) {
+        for (const auto& flag : opt.flags) {
+            accepted_arguments.insert(flag);
+        }
+    }
+
     int index = 1;
     std::string command;
 
+    // Parse command
     if (index < argc && argv[index][0] != '-') {
         const std::string candidate = toLower(argv[index]);
         if (commandNames.count(candidate) != 0) {
@@ -188,38 +363,36 @@ std::unordered_map<std::string, std::string> TandemTwister::parseCommandLine(int
         }
     }
 
-    std::vector<std::string> accepted_arguments = { "-b","--bam","-r", "--ref",  "-m", "--motif_file", "-pad", "--padding", "-t", "--threads", "-h", "--help", "-f", "--fasta_file", "-o", "--output_file", "-s", "--output_file_statistics",
-    "-mml", "-min_match_ratio_l", "-mms" , "-min_match_ration_s", "-crs", "-consensus_ratio_str", "-minPF", "--minPts_frac" ,"-crv", "--consensus_ratio_vntr", "-ms", "--match_score", "-mp", "--mismatch_penalty", "-gp", "--gap_penalty", "-seps", "--start_eps_str",
-    "-sepv", "--start_eps_vntr", "-minPS", "--minPts_str", "-minPV", "--minPts_vntr", "-nls", "--noise_limit_str", "-nlv", "--noise_limit_vntr", "-qs", "--quality_score",
-    "-ci", "--cluster_iter","-s","--sex", "--germline", "--somatic", "--assembly", "-rt", "--reads_type","-tanCon", "--tandem_run_threshold" , "-kpr", "--keepPhasingResults", "--sample", "-sn", "--keepCutReads","-kcr","-cor","--correct","-roz","--removeOutliersZscore", "-rtr", "--refineTrRegions","-minR", "--minReadsInRegion", "-btg", "--bamIsTagged", "--version", "-v", "--verbose", "-h" };
-
+    // Parse arguments
     for (int i = index; i < argc; ++i) {
         if (argv[i][0] == '-') {
-            if (std::find(accepted_arguments.begin(), accepted_arguments.end(), argv[i]) != accepted_arguments.end()) {
-                const std::string key = argv[i];
-
-                const auto flagIt = commandFlags.find(key);
-                if (flagIt != commandFlags.end()) {
-                    if (!command.empty() && command != flagIt->second) {
-                        std::cerr << "Error: Multiple commands specified (" << command << " and " << flagIt->second << ")." << std::endl;
-                        printUsage(args);
-                        exit(1);
-                    }
-                    command = flagIt->second;
-                    setCommand(args, command, commandFlags);
-                }
-
-                if (i + 1 < argc && argv[i + 1][0] != '-' &&
-                    std::find(accepted_arguments.begin(), accepted_arguments.end(), argv[i + 1]) == accepted_arguments.end()) {
-                    args[key] = argv[i + 1];
-                    ++i;
-                } else {
-                    args[key] = "";
-                }
-            } else {
+            if (accepted_arguments.count(argv[i]) == 0) {
                 std::cerr << "Error: Unrecognized argument " << argv[i] << std::endl;
                 printUsage(args);
                 exit(1);
+            }
+            
+            const std::string key = argv[i];
+            
+            // Check if it's a command flag
+            const auto flagIt = commandFlags.find(key);
+            if (flagIt != commandFlags.end()) {
+                if (!command.empty() && command != flagIt->second) {
+                    std::cerr << "Error: Multiple commands specified (" << command << " and " << flagIt->second << ")." << std::endl;
+                    printUsage(args);
+                    exit(1);
+                }
+                command = flagIt->second;
+                setCommand(args, command, commandFlags);
+            }
+
+            // Get value if available
+            if (i + 1 < argc && argv[i + 1][0] != '-' &&
+                accepted_arguments.count(argv[i + 1]) == 0) {
+                args[key] = argv[i + 1];
+                ++i;
+            } else {
+                args[key] = "";
             }
         } else {
             const std::string token = toLower(argv[i]);
@@ -239,6 +412,7 @@ std::unordered_map<std::string, std::string> TandemTwister::parseCommandLine(int
         }
     }
 
+    // Handle missing command
     if (command.empty()) {
         for (const auto& entry : commandFlags) {
             if (args.find(entry.first) != args.end()) {
@@ -280,6 +454,7 @@ std::unordered_map<std::string, std::string> TandemTwister::parseCommandLine(int
         exit(0);
     }
 
+    // Build command line string
     std::string command_line;
     for (int i = 0; i < argc; i++) {
         command_line += argv[i];
@@ -289,194 +464,38 @@ std::unordered_map<std::string, std::string> TandemTwister::parseCommandLine(int
     return args;
 }
 
-void TandemTwister::open_reference_file(const std::string& reference_file, faidx_t*& fai) {
-    fai = fai_load(reference_file.c_str());
-    if (fai == NULL) {
-        throw std::runtime_error("Error: could not open reference file");
-    }
-}
-
-
-void printFullDoc(const std::string& activeCommand) {
-    printVersion();
-
-    printSectionHeader("Usage");
-    printOption("tandemtwister [global options] <command> [command options]", "");
-
-    printCommandsOverview(activeCommand);
-
-    const bool highlightGermline = activeCommand == "germline";
-    const bool highlightSomatic = activeCommand == "somatic";
-    const bool highlightAssembly = activeCommand == "assembly";
-
-    printSectionHeader("Getting Started");
-    printOption("tandemtwister " + maybeBold("germline", highlightGermline) + " --help", "Display germline-specific options.");
-    printOption("tandemtwister " + maybeBold("somatic", highlightSomatic) + " --help", "Display somatic-specific options.");
-    printOption("tandemtwister " + maybeBold("assembly", highlightAssembly) + " --help", "Display assembly-specific options.");
-
-    printSectionHeader("Global Options");
-    //printOption("-tanCon, --tandem_run_threshold", "Maximum bases for merging tandem repeat runs (default: 2 × motif size).");
-    printOption("-v, --verbose", "Verbosity level (0: error, 1: critical, 2: info, 3: debug).");
-    printOption("-h, --help | --version", "Display this help or version information.");
-
-    printLicenseNotice();
-}
-
-void printAssemblyDoc(bool emphasizeCommand) {
-    const bool highlight = emphasizeCommand;
-    printSectionHeader("Usage");
-    const std::string commandLine = "tandemtwister " + maybeBold("assembly", highlight) + " [options] -b <alignment_input> -m <motif_file> -r <reference_fasta> -o <output_file> -s <sample_sex>";
-    printOption(commandLine,
-                "Run assembly-based analysis on aligned genome input.");
-
-    printSectionHeader("Required Arguments");
-    printOption("Command: " + maybeBold("assembly", highlight) + " [--assembly]", "Selects the assembly analysis workflow (legacy flag supported).");
-    printOption("-b, --bam", "Path to the aligned assembly BAM file.");
-    printOption("-r, --ref", "Reference FASTA file (.fa / .fna).");
-    printOption("-m, --motif_file", "Motif definition file (BED / TSV / CSV).");
-    printOption("-o, --output_file", "Output file for region, motif, and haplotype copy numbers.");
-    printOption("-s, --sex", "Sample sex (0 | female, 1 | male).");
-    printOption("-sn, --sample", "Optional sample identifier.");
-    printOption("-rt, --reads_type", "Sequencing platform / read type (default: CCS).");
-
-    printSectionHeader("Alignment Parameters");
-    printOption("-mml, --min_match_ratio_l", "Minimum match ratio for long motifs (default: 0.5).");
-    // printOption("-ms, --match_score", "Match score (default: 10).");
-    // printOption("-mp, --mismatch_penalty", "Mismatch penalty (default: -2).");
-    // printOption("-gp, --gap_penalty", "Gap penalty (default: -5).");
-
-    printSectionHeader("General");
-    printOption("-tanCon, --tandem_run_threshold", "Maximum bases for merging tandem repeat runs (default: 2 × motif size).");
-    printOption("-v, --verbose", "Verbosity level (0: error, 1: critical, 2: info, 3: debug).");
-    printOption("-h, --help | --version", "Display this help or version information.");
-}
-
-void printGermlineSomaticDoc(const std::string& activeCommand) {
-    const bool highlightGermline = activeCommand == "germline";
-    const bool highlightSomatic = activeCommand == "somatic";
-
-    printSectionHeader("Required Arguments");
-    printOption("Command: " + maybeBold("germline", highlightGermline) + " | " + maybeBold("somatic", highlightSomatic) + " [--germline | --somatic]  ", "Selects the germline or somatic analysis workflow (legacy flags supported).");
-    printOption("-b, --bam", "Path to the BAM file containing aligned reads.");
-    printOption("-r, --ref", "Reference FASTA file (.fa / .fna).");
-    printOption("-m, --motif_file", "Motif definition file (BED / TSV / CSV).");
-    printOption("-o, --output_file", "Output file for region, motif, and haplotype copy numbers.");
-    printOption("-s, --sex", "Sample sex (0 | female, 1 | male).");
-    printOption("-sn, --sample", "Optional sample identifier.");
-    printOption("-rt, --reads_type", "Sequencing platform / read type (default: CCS).");
-    printOption("-t, --threads", "Number of threads (default: 1).");
-
-    printSectionHeader("Alignment Parameters");
-    printOption("-mml, --min_match_ratio_l", "Minimum match ratio for long motifs (default: 0.5).");
-    // printOption("-ms, --match_score", "Match score (default: 10).");
-    // printOption("-mp, --mismatch_penalty", "Mismatch penalty (default: -2).");
-    // printOption("-gp, --gap_penalty", "Gap penalty (default: -5).");
-
-    printSectionHeader("Read Extraction");
-    printOption("-s, --output_file_statistics", "Optional phasing summary output file.");
-    printOption("-pad, --padding", "Padding around the STR region when extracting reads (default: 0).");
-    //printOption("-kpr, --keepPhasingResults", "Persist intermediate phasing results (default: false).");
-    printOption("-kcr, --keepCutReads", "Retain reads trimmed during preprocessing (default: false).");
-    printOption("-minR, --minReadsInRegion", "Minimum spanning reads required per region (default: 2).");
-    printOption("-btg, --bamIsTagged", "Treat BAM as pre-tagged/phased (default: false).");
-    printOption("-qs, --quality_score", "Minimum read quality score (default: 10, max: 60).");
-
-    printSectionHeader("Correction");
-    printSectionHeader("Reference-based Correction Parameters");
-    printOption("-rtr, --refineTrRegions", "Refine tandem repeat regions (default: false).");
-    printOption("-tanCon, --tandem_run_threshold", "Maximum number of bases for merging tandem-repeat runs during reference-based refinement (default: 2 × motif size).");
-
-    printSectionHeader("Read-based Correction Parameters");
-    printOption("-cor, --correct", "Enable genotype correction (CCS default: false; CLR/ONT default: true).");
-    printOption("-crs, --consensus_ratio_str", "Minimum consensus ratio for STR correction (default: 0.3).");
-    printOption("-crv, --consensus_ratio_vntr", "Minimum consensus ratio for VNTR correction (default: 0.3).");
-    printOption("-roz, --removeOutliersZscore", "Remove outliers before phasing (default: false).");
-
-    printSectionHeader("Clustering");
-    printOption("-seps, --start_eps_str", "Initial epsilon for STR clustering (default: 0.2).");
-    printOption("-sepv, --start_eps_vntr", "Initial epsilon for VNTR clustering (default: 0.2).");
-    printOption("-minPF, --minPts_frac", "Minimum read fraction per cluster (default: 0.12).");
-    printOption("-nls, --noise_limit_str", "Noise limit for STR clustering (default: 0.2).");
-    printOption("-nlv, --noise_limit_vntr", "Noise limit for VNTR clustering (default: 0.35).");
-    printOption("-ci, --cluster_iter", "Number of clustering iterations (default: 40).");
-
-    printSectionHeader("General");
-    printOption("-v, --verbose", "Verbosity level (0: error, 1: critical, 2: info, 3: debug).");
-    printOption("-h, --help | --version", "Display this help or version information.");
-}
-
-void printGermlineDoc(const std::string& activeCommand) {
-    printCommandsOverview(activeCommand);
-    printSectionHeader("Usage");
-    const bool highlightGermline = activeCommand == "germline";
-    const bool highlightSomatic = activeCommand == "somatic";
-    printOption("tandemtwister " + maybeBold("germline", highlightGermline) + " [options] -b <input_bam_file> -m <motif_file> -r <reference_fasta> -o <output_file> -s <sample_sex>",
-                "Run germline analysis on long-read alignments.");
-    printOption("tandemtwister " + maybeBold("somatic", highlightSomatic) + "  [options] -b <input_bam_file> -m <motif_file> -r <reference_fasta> -o <output_file> -s <sample_sex>",
-                "Run somatic analysis on long-read alignments.");
-    printGermlineSomaticDoc(activeCommand);
-}
-
-void printLicenseNotice() {
-    printSectionHeader("License & Warranty");
-    std::cerr << "  " << styleLabel("License") << ": BSD 3-Clause" << std::endl;
-    std::cerr << "  " << styleLabel("Warranty") << ": Provided \"AS IS\" without warranty of any kind." << std::endl;
-    std::cerr << "  " << styleLabel("Usage") << ": For research purposes only; not for diagnostic or clinical use." << std::endl;
-}
-
+// Print usage - simplified and data-driven
 void TandemTwister::printUsage(std::unordered_map<std::string, std::string> &args) {
     const auto commandIt = args.find("command");
+    std::string command = (commandIt != args.end()) ? commandIt->second : "";
 
-    if (commandIt != args.end()) {
-        const std::string& command = commandIt->second;
-        printVersion();
-        if (command == "germline") {
-            printSectionHeader("Germline Analysis");
-            std::cerr << "Genotyping tandem repeats from long reads." << std::endl;
-            printGermlineDoc("germline");
-            printLicenseNotice();
-            return;
-        }
-        if (command == "somatic") {
-            printSectionHeader("Somatic Analysis");
-            std::cerr << "Genotyping tandem repeats from long reads." << std::endl;
-            printGermlineDoc("somatic");
-            printLicenseNotice();
-            return;
-        }
-        if (command == "assembly") {
-            printSectionHeader("Assembly Analysis");
-            std::cerr << "Genotyping tandem repeats from aligned genome input." << std::endl;
-            printAssemblyDoc(true);
-            printLicenseNotice();
-            return;
-        }
+    // Handle legacy flags
+    if (command.empty()) {
+        if (args.find("--germline") != args.end()) command = "germline";
+        else if (args.find("--somatic") != args.end()) command = "somatic";
+        else if (args.find("--assembly") != args.end()) command = "assembly";
     }
-    
-    if (args.find("--germline") != args.end() || args.find("--somatic") != args.end()) {
-        printVersion();
-        if (args.find("--germline") != args.end()) {
-            printSectionHeader("Germline Analysis");
-            std::cerr << "Genotyping tandem repeats from long reads." << std::endl;
-        } else {
-            printSectionHeader("Somatic Analysis");
-            std::cerr << "Genotyping tandem repeats from long reads." << std::endl;
-        }
 
-        printGermlineDoc(args.find("--germline") != args.end() ? "germline" : "somatic");
+    printVersion();
+
+    if (command == "germline") {
+        printSectionHeader("Germline Analysis");
+        std::cerr << "Genotyping tandem repeats from long reads." << std::endl;
+        printCommandsOverview("germline");
+        printCommandDoc("germline", "germline");
         printLicenseNotice();
-        return;
-    }
-
-    if (args.find("--assembly") != args.end()) {
-        printVersion();
+    } else if (command == "somatic") {
+        printSectionHeader("Somatic Analysis");
+        std::cerr << "Genotyping tandem repeats from long reads." << std::endl;
+        printCommandsOverview("somatic");
+        printCommandDoc("somatic", "somatic");
+        printLicenseNotice();
+    } else if (command == "assembly") {
         printSectionHeader("Assembly Analysis");
         std::cerr << "Genotyping tandem repeats from aligned genome input." << std::endl;
-        printAssemblyDoc(true);
+        printCommandDoc("assembly", "assembly");
         printLicenseNotice();
-        return;
+    } else {
+        printFullDoc(command);
     }
-
-    printFullDoc(commandIt != args.end() ? commandIt->second : std::string());
 }
-
