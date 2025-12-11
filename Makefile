@@ -50,11 +50,11 @@ tandemtwister: $(OBJS)
 	$(CXX) $(CXXFLAGS) -o tandemtwister $^ $(LDFLAGS)
 
 clean:
-	rm -f TandemTwister $(OBJS) $(DEPS)
+	rm -f tandemtwister $(OBJS) $(DEPS)
 
-install: TandemTwister
+install: tandemtwister
 	@echo "Installing tandemtwister binary to /usr/local/bin"
-	@install -m 755 tandemtwister /usr/local/bin
+	@sudo install -m 755 tandemtwister /usr/local/bin
 
 .PHONY: test
 

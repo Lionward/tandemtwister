@@ -113,11 +113,12 @@ Please ensure that you have these tools installed and available in your PATH bef
 > Before building TandemTwister, please ensure all required tools are installed and available in your`PATH`.
 ```bash
 mamba install -c conda-forge libdeflate=1.21
-mamba install htslib=1.22.1
+mamba install bioconda::htslib=1.22.1
 mamba install mlpack=4.5.0
 mamba install make=4.4.1
 mamba install gxx=14.3.0
 mamba install cereal=1.3.2
+mamba install spdlog=1.15.3
 ```
 
 ### 4. Build and install TandemTwister
@@ -137,7 +138,7 @@ make
 Run `tandemtwister` from an activated environment using the command-first interface:
 
 ```bash
-tandemtwister [global options] <command> [command options]
+./tandemtwister [global options] <command> [command options]
 ```
 
 **Commands**
@@ -202,7 +203,7 @@ tandemtwister [global options] <command> [command options]
 <div style="margin-left:2em">
   <p><strong>Read-based Correction Parameters</strong></p>
   <ul>
-    <li><code>-cor, --correct</code>: Perform genotype calling correction based on the consensus from sequencing reads (CCS Default: false, CLR/ONT Default: true)</li>
+    <li><code>-cor, --correct</code>: Perform genotype calling correction based on the interval-based consensus from sequencing reads (CCS Default: false, CLR/ONT Default: true)</li>
     <li><code>-crs, --consensus_ratio_str</code>: Minimum fraction of reads in a cluster required for a consensus call in STR regions (Default: 0.3)</li>
     <li><code>-crv, --consensus_ratio_vntr</code>: Minimum fraction of reads in a cluster required for a consensus call in VNTR regions (Default: 0.3)</li>
     <li><code>-roz, --removeOutliersZscore</code>: Remove outlier reads for phasing based on Z-score (Default: false)</li>
@@ -219,7 +220,7 @@ tandemtwister [global options] <command> [command options]
 <ul>
   <li><code>-seps, --start_eps_str</code>: Start radian for clustering in STR regions (Default: 0.2)</li>
   <li><code>-sepv, --start_eps_vntr</code>: Start radian for clustering in VNTR regions (Default: 0.2)</li>
-  <li><code>-minPF, --minPts_frac</code>: Min fraction of reads that should be in one cluster (Default: 0.3)</li>
+  <li><code>-minPF, --minPts_frac</code>: Min fraction of reads that should be in one cluster (Default: 0.12)</li>
   <li><code>-nls, --noise_limit_str</code>: Noise limit for clustering in STR regions (Default: 0.2)</li>
   <li><code>-nlv, --noise_limit_vntr</code>: Noise limit for clustering in VNTR regions (Default: 0.35)</li>
   <li><code>-ci, --cluster_iter</code>: Number of iterations for clustering (Default: 20)</li>
