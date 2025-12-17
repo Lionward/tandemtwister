@@ -172,7 +172,7 @@ void printVersion() {
     printTitle("TandemTwister");
     const std::string indent = "  ";
     std::cerr << indent << styleLabel("Purpose") << ": A tool for genotyping tandem repeats from long reads and aligned genome input" << std::endl;
-    std::cerr << indent << styleLabel("Version") << ": 1.0.0" << std::endl;
+    std::cerr << indent << styleLabel("Version") << ": 0.1.0" << std::endl;
     std::cerr << indent << styleLabel("Author") << ": Lion Ward Al Raei" << std::endl;
     std::cerr << indent << styleLabel("Contact") << ": Lionward.alraei@gmail.com" << std::endl;
     std::cerr << indent << styleLabel("Institute") << ": Max Planck Institute for Molecular Genetics" << std::endl;
