@@ -1,24 +1,6 @@
-<!-- Anchor for Top of the README -->
-<a name="readme-top"></a>
-<!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
-1. - [Getting Started](#getting-started)
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
-<a href="link_to_demo_gif.gif"><strong>View Demo</strong></a>
-  <h1>TandemTwister Tool</h1>
--->
 
-<!-- PROJECT LOGO -->
+<a name="readme-top"></a>
+
 <br />
 <div align="center">
  <img width="443" alt="grafik" src="logo_tandemtwister.svg">
@@ -37,13 +19,12 @@
   </p>
 </div>
 
-<!-- TABLE OF CONTENTS -->
+
 ## Table of Contents
 - [Introducing TandemTwister](#introducing-tandemtwister)
 - [Key features](#key-features)
 - [Visualization Tool: ProleTRact](#visualization-tool-proletract)
-- [Requirements](#requirements)
-- [Installation](#-installation)
+- [Installation](#Installation)
 - [Usage](#usage)
   - [Required Input](#required-input)
   - [Global Options](#global-options)
@@ -87,7 +68,7 @@ TandemTwister comes with a companion visualization tool, [**ProleTRact**](https:
 
 
 <!-- Installation -->
-## 🛠️ Installation
+##  Installation
 
 Follow these steps to install **TandemTwister**.
 
