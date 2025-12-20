@@ -1,4 +1,12 @@
-<meta name="google-site-verification" content="Fq4C_Fkmju44GXVeW2otbQB29bgU6nYfPrjctY2lEzg" />
+<!DOCTYPE html>
+<html>
+<head>
+ <meta name="google-site-verification" content="Fq4C_Fkmju44GXVeW2otbQB29bgU6nYfPrjctY2lEzg" />
+</head>
+<body>
+    <p>Google Search Console Verification</p>
+</body>
+</html>
 <a name="readme-top"></a>
 
 <br />
