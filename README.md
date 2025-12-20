@@ -286,9 +286,10 @@ tandemtwister germline \
 
 Below is an example of the output in VCF format:
 
-```vcf
+<pre><code>
 chr1    60637   chr1:60636-60665        ATTGTAAAGTCAAACAATTATAAGTCAAAC  ATTGTAAAGTCAAACAATTATAAGTCAAAC,ATTGTAAAGTCAAACAATTATAAGTCAAAC   1       PASS    TR_type=VNTR;MOTIFS=AATTATAAGTCAAA,AATTATAAGTCAAAC,AATTGTAAGTCAAAC,ATTGTAAAGTCAAAC,TTGTAAAGTCAAAC;UNIT_LENGTH_AVG=14;MOTIF_IDs_REF=3_1;REF_SPAN=(1-15)_(16-30);CN_ref=2 GT:CN:MI:DP:SP  0/0:2,2:3_1:31:(1-15)_(16-30)
-```
+</code></pre>
+
 
 ## test data
 The test data is available in the test_data folder. The test data is in the form of a bam file, a reference file, and a motif file. The motif file is in the form of a bed file. The test data can be used to test the TandemTwister tool.
