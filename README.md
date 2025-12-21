@@ -297,12 +297,14 @@ chr1    60637   chr1:60636-60665        ATTGTAAAGTCAAACAATTATAAGTCAAAC  ATTGTAAA
 </code></pre>
 
 
-## test data
+## Test data
+
 The test data is available in the test_data folder. The test data is in the form of a bam file, a reference file, and a motif file. The motif file is in the form of a bed file. The test data can be used to test the TandemTwister tool.
-run the following command to test the tool.
+
+Run the following command to test the tool:
 
 ```bash
-  make test
+make test
 ```
 
 ## Contributions
@@ -322,14 +324,13 @@ Once our manuscript is published, we will update this section with the official 
 Thank you for acknowledging TandemTwister in your work!
 
 
-## UpcomingFeatures
-1.  Implementation of a Lookup Table for ONT Input Acceleration:
-      Integrate a lookup table for ONT input to enhance processing speed, optimizing the tool's performance.
+## Upcoming Features
 
-2.  Inclusion of Methylation Information:
-      Integrate methylation information into the analysis, providing users with additional insights into the epigenetic characteristics of the tandem repeats.
+1. **Implementation of a Lookup Table for ONT Input Acceleration:** Integrate a lookup table for ONT input to enhance processing speed, optimizing the tool's performance.
 
-3. Add Trio-analysis mode for better genotyping results in Trio samples.
+2. **Inclusion of Methylation Information:** Integrate methylation information into the analysis, providing users with additional insights into the epigenetic characteristics of the tandem repeats.
+
+3. **Add Trio-analysis mode** for better genotyping results in Trio samples.
 
 
 <!-- Acknowledgements -->
