@@ -138,8 +138,8 @@ Run `tandemtwister` from an activated environment using the command-first interf
   <li>
     <strong>Command</strong>
     <ul>
-      <li><code>germline</code> / <code>somatic</code> / <code>assembly</code>: Selects the analysis workflow.
-      <p><span style="color: #e6b800; font-size: 1.3em;">&#9888;&#65039;</span> <strong>Warning:</strong> <em>Somatic mode is still experimental and has not been fully tested. Use with caution.</em></p>
+      <li><code>germline</code> / <code>somatic</code> / <code>assembly</code>: Selects the analysis workflow.</li>
+      <li><p><span style="color: #e6b800; font-size: 1.3em;">&#9888;&#65039;</span> <strong>Warning:</strong> <em>Somatic mode is still experimental and has not been fully tested. Use with caution.</em></p></li>
     </ul>
   </li>
   <li>
@@ -157,11 +157,13 @@ Run `tandemtwister` from an activated environment using the command-first interf
   </li>
 </ol>
 
+
 ### Global Options
 
 - <code>-v, --verbose</code> &nbsp; Verbosity level (0 = error, 1 = critical, 2 = info, 3 = debug).
 - <code>-h, --help</code> &nbsp; Display global help (or command-specific help when issued after a command).
 - <code>--version</code> &nbsp; Print version information and exit.
+
 
 ### Dynamic Programming Alignment Parameters
 
@@ -169,7 +171,9 @@ Run `tandemtwister` from an activated environment using the command-first interf
   <li><code>-mml, --min_match_ratio_l</code>: Minimum match ratio for long motifs (Default: 0.5)</li>
 </ul>
 
+
 ### Germline &amp; Somatic Analysis Options
+
 
 #### Read Extraction Parameters
 <ul>
@@ -183,6 +187,7 @@ Run `tandemtwister` from an activated environment using the command-first interf
   <li><code>-btg, --bamIsTagged</code>: Reads in BAM are phased (Default: false)</li>
   <li><code>-qs, --quality_score</code>: Minimum quality score for a read to be considered (Default: 10, Max: 60)</li>
   </ul>
+
 
 #### Correction Parameters
 <div style="margin-left:2em">
@@ -201,6 +206,7 @@ Run `tandemtwister` from an activated environment using the command-first interf
   </ul>
 </div>
 
+
 #### Clustering Parameters
 <ul>
   <li><code>-seps, --start_eps_str</code>: Start radian for clustering in STR regions (Default: 0.2)</li>
@@ -211,11 +217,13 @@ Run `tandemtwister` from an activated environment using the command-first interf
   <li><code>-ci, --cluster_iter</code>: Number of iterations for clustering (Default: 20)</li>
 </ul>
 
+
 ### Help
 <ul>
   <li><code>tandemtwister --help</code>: Show the global overview with available commands and options.</li>
   <li><code>tandemtwister &lt;command&gt; --help</code>: Show command-specific options (e.g., <code>tandemtwister germline --help</code>).</li>
 </ul>
+
 
 ### Example
 <pre><code>
@@ -231,8 +239,7 @@ tandemtwister germline \
 </code></pre>
 
 
-
-<h2>VCF INFO and FORMAT Field Descriptions</h2>
+## VCF INFO and FORMAT Field Descriptions
 
 <table>
   <thead>
@@ -287,7 +294,6 @@ tandemtwister germline \
 </table>
 
 
-
 ## Example Output
 
 Below is an example of the output in VCF format:
@@ -307,9 +313,11 @@ Run the following command to test the tool:
 make test
 ```
 
+
 ## Contributions
 
 We welcome contributions from the community! If you find any issues or have suggestions for improvement, please [open an issue](https://github.com/Lionward/tandemtwister/issues) or create a pull request.
+
 
 ## Citation
 
@@ -320,7 +328,8 @@ If you use TandemTwister in your research or analysis, please cite our work as f
 > [GitHub Repository](https://github.com/Lionward/tandemtwister)  
 > (Manuscript in preparation)
 
-Once our manuscript is published, we will update this section with the official citation.  
+Once our manuscript is published, we will update this section with the official citation.
+
 Thank you for acknowledging TandemTwister in your work!
 
 
@@ -332,8 +341,6 @@ Thank you for acknowledging TandemTwister in your work!
 
 3. **Add Trio-analysis mode** for better genotyping results in Trio samples.
 
-
-<!-- Acknowledgements -->
 
 ## Acknowledgements
 
