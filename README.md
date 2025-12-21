@@ -28,6 +28,7 @@
 - [Introducing TandemTwister](#introducing-tandemtwister)
 - [Key features](#key-features)
 - [Visualization Tool: ProleTRact](#visualization-tool-proletract)
+- [Tandem Repeat Catalogs](#tandem-repeat-catalogs)
 - [Installation](#Installation)
 - [Usage](#usage)
   - [Required Input](#required-input)
@@ -70,6 +71,15 @@ TandemTwister comes with a companion visualization tool, [**ProleTRact**](https:
 
     
 
+## Tandem Repeat Catalogs
+
+For comprehensive tandem repeat analyses, the following resources provide curated TR catalogs and annotations:
+
+1. **[TRcompDB v1.0](https://zenodo.org/records/13263615)**: A global reference of tandem repeat variation with motif sets and TR annotations from 360 long-read assemblies. Available for GRCh38 and T2T-CHM13 reference genomes in VCF and TSV formats.
+
+2. **[STRchive](https://strchive.org/loci/)**: A catalog of 75 disease-associated tandem repeat loci with detailed annotations including motif sequences, genomic positions, and disease associations. Compatible with multiple TR genotyping tools and available for hg19, hg38, and T2T-CHM13.
+
+3. **[Project Adotto Tandem-Repeat Regions](https://zenodo.org/records/13987414)**: A catalog of tandem-repeat regions in human genomes, provided as BED format files with annotations for tandem repeat analysis.
 
 <!-- Installation -->
 ##  Installation
@@ -301,6 +311,9 @@ Below is an example of the output in VCF format:
 <pre><code>
 chr1    60637   chr1:60636-60665        ATTGTAAAGTCAAACAATTATAAGTCAAAC  ATTGTAAAGTCAAACAATTATAAGTCAAAC,ATTGTAAAGTCAAACAATTATAAGTCAAAC   1       PASS    TR_type=VNTR;MOTIFS=AATTATAAGTCAAA,AATTATAAGTCAAAC,AATTGTAAGTCAAAC,ATTGTAAAGTCAAAC,TTGTAAAGTCAAAC;UNIT_LENGTH_AVG=14;MOTIF_IDs_REF=3_1;REF_SPAN=(1-15)_(16-30);CN_ref=2 GT:CN:MI:DP:SP  0/0:2,2:3_1:31:(1-15)_(16-30)
 </code></pre>
+
+
+
 
 
 ## Test data
