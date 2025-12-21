@@ -1,10 +1,3 @@
-<html>
-<head>
- <meta name="google-site-verification" content="Fq4C_Fkmju44GXVeW2otbQB29bgU6nYfPrjctY2lEzg" />
-</head>
-<body>
-</body>
-</html>
 <a name="readme-top"></a>
 
 <br />

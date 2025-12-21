@@ -1,5 +1,6 @@
 #include "include/TandemTwister.hpp"
 #include <thread>
+#include <mutex>
 #include <iostream>
 #include <chrono>
 #include <limits>
@@ -1264,195 +1265,141 @@ std::vector<vcfRecordInfoReads> TandemTwister::process_chunk_reads(size_t start_
 
 void TandemTwister::processRegionsForLongReadsInput() {
     /**
-     * Process regions for long reads input
+     * Process regions for long reads input using multithreading
     */ 
-    std::vector<pid_t> pids;
+    // Thread-safe data structures to collect results
+    std::mutex results_mutex;
+    std::vector<vcfRecordInfoReads> all_genotype_records;
+    std::string all_cut_reads_fasta = "";
 
-    uint32_t num_processes = std::min(this->num_threads, static_cast<uint32_t>(this->TR_regions.size()));
-    uint32_t num_of_regions = this->TR_regions.size() / num_processes;
-    for (size_t  i = 0; i < num_processes; ++i) {
-        pid_t pid = fork();
-        if (pid == 0) {
-
-            uint32_t start = i * num_of_regions;
-            uint32_t end = (i == num_processes - 1) ? this->TR_regions.size() : (i + 1) * num_of_regions;
-            std::vector <std::string> cut_reads_chunk;
-            samFile* fp = NULL;
-            bam_hdr_t* h = NULL;
-            hts_idx_t* idx = NULL;
-            faidx_t* fai = NULL;
+    uint32_t num_threads = std::min(this->num_threads, static_cast<uint32_t>(this->TR_regions.size()));
+    uint32_t num_of_regions = this->TR_regions.size() / num_threads;
+    // Lambda function for thread worker
+    auto thread_worker = [&](size_t thread_id) {
+        uint32_t start = thread_id * num_of_regions;
+        uint32_t end = (thread_id == num_threads - 1) ? this->TR_regions.size() : (thread_id + 1) * num_of_regions;
+        
+        samFile* fp = NULL;
+        bam_hdr_t* h = NULL;
+        hts_idx_t* idx = NULL;
+        faidx_t* fai = NULL;
+        
+        try {
             open_bam_file(this->input_bam, fp, h, idx);
             open_reference_file(this->input_reference, fai);
 
-            try{
-                std::string cut_reads_fasta = "";
-                std::vector<vcfRecordInfoReads> chunk_genotype_records = process_chunk_reads(start, end,fp,h,idx,fai,cut_reads_fasta);
-                // open a temp file to write the cut reads to
-                if (this->keep_cut_sequence){
-                    std::string cut_reads_file = this->output_path + "cut_reads_" + this->sampleName + "_" + this->reads_type + "_" + std::to_string(i) + ".fasta";
-                    std::ofstream outfile_cutReads(cut_reads_file);
-                    if (!outfile_cutReads.is_open()) {
-                        spdlog::error("Failed to open file {}", cut_reads_file);
-                        exit(1);
-                    }
-                    outfile_cutReads << cut_reads_fasta;
-                    outfile_cutReads.flush();
-                    outfile_cutReads.close();
-                }
-                
-   
+            std::string cut_reads_fasta = "";
+            std::vector<vcfRecordInfoReads> chunk_genotype_records = process_chunk_reads(start, end, fp, h, idx, fai, cut_reads_fasta);
 
-                std::string vcf_file = this->output_path  + this->sampleName + "_" + this->reads_type + "_" + std::to_string(i) + ".vcf";
-                // print the results_chunk
-              
-                writeRecordsToVcf(chunk_genotype_records,vcf_file);
-                // Measure and write memory stats before exit
-                {
-                    double vm, rss;
-                    unsigned long vsize;
-                    long rss_val;
-                    {
-                        std::string ignore;
-                        std::ifstream ifs("/proc/self/stat", std::ios_base::in);
-                        ifs >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore
-                                >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore
-                                >> ignore >> ignore >> vsize >> rss_val;
-                    }
-                    long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024;
-                    vm = vsize / 1024.0;
-                    rss = rss_val * page_size_kb;
-                    
-                    std::string mem_file = this->output_path + "mem_stats_" + this->reads_type + "_" + std::to_string(i) + ".txt";
-                    std::ofstream mem_ofs(mem_file);
-                    if (mem_ofs.is_open()) {
-                        mem_ofs << vm << " " << rss << std::endl;
-                        mem_ofs.close();
-                    }
-                }
-                // close the output file
-                outfile.close();
-                // close the BAM file
-                hts_close(fp);
-                // destroy the header
-                bam_hdr_destroy(h);
-                // destroy the index
-                hts_idx_destroy(idx);
-                // destroy the FASTA index
-                fai_destroy(fai);
-                // exit the process
-                exit(0);
+            // Collect results thread-safely (file writing done in main thread)
+            {
+                std::lock_guard<std::mutex> lock(results_mutex);
+                all_genotype_records.insert(all_genotype_records.end(), 
+                                           chunk_genotype_records.begin(), 
+                                           chunk_genotype_records.end());
+                all_cut_reads_fasta += cut_reads_fasta;
             }
-            catch (const std::runtime_error& e) {
-                spdlog::error("Error: could not fork: {}", e.what());
-                // exit the process with error
-                exit(1);
-            }          
+            
+            // Measure and write memory stats
+            {
+                double vm, rss;
+                unsigned long vsize;
+                long rss_val;
+                {
+                    std::string ignore;
+                    std::ifstream ifs("/proc/self/stat", std::ios_base::in);
+                    ifs >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore
+                            >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore
+                            >> ignore >> ignore >> vsize >> rss_val;
+                }
+                long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024;
+                vm = vsize / 1024.0;
+                rss = rss_val * page_size_kb;
+                
+                std::string mem_file = this->output_path + "mem_stats_" + this->reads_type + "_" + std::to_string(thread_id) + ".txt";
+                std::ofstream mem_ofs(mem_file);
+                if (mem_ofs.is_open()) {
+                    mem_ofs << vm << " " << rss << std::endl;
+                    mem_ofs.close();
+                }
+            }
+            
+            // Close file handles
+            hts_close(fp);
+            bam_hdr_destroy(h);
+            hts_idx_destroy(idx);
+            fai_destroy(fai);
         }
-        else if (pid < 0) {
-            spdlog::error("Error: could not fork");
-            return;
+        catch (const std::runtime_error& e) {
+            spdlog::error("Error in thread {}: {}", thread_id, e.what());
+            // Clean up on error
+            if (fp) hts_close(fp);
+            if (h) bam_hdr_destroy(h);
+            if (idx) hts_idx_destroy(idx);
+            if (fai) fai_destroy(fai);
         }
-        else {  
-            pids.push_back(pid);
-        }
+    };
+    
+    // Launch threads
+    std::vector<std::thread> threads;
+    for (size_t i = 0; i < num_threads; ++i) {
+        threads.emplace_back(thread_worker, i);
     }
-    for (auto pid : pids) {
-        int status;
-        waitpid(pid, &status, 0);
+    
+    // Wait for all threads to complete
+    for (auto& t : threads) {
+        t.join();
     }
     
 
-    std::string cut_reads_fasta = "";
-    std::string genotype_result = "";
-    std::string vcf_result = "";
-
-    // open the main vcf file
+    // Write records to VCF and collect them for sorting
+    // We'll write to a temporary file first, then read and sort
+    std::string temp_vcf = this->output_path + "temp_" + this->sampleName + "_" + this->reads_type + ".vcf";
+    writeRecordsToVcf(all_genotype_records, temp_vcf);
+    
+    // Open the main vcf file
     htsFile* outfile_vcf = bcf_open(this->output_file_vcf.c_str(), "wz");
-    // write the this->vcf_header to the vcf file
-
     if (outfile_vcf == NULL) {
         spdlog::error("Failed to open file {}", this->output_file_vcf);
-        exit(1);
-    }
-    if (bcf_hdr_write(outfile_vcf, this->vcf_header) != 0) {
-        fprintf(stderr, "Error writing VCF header.\n");
         return;
     }
-
     
-    if (outfile_vcf == NULL) {
-        spdlog::error("Failed to open file {}", vcf_result);
-        exit(1);
+    if (bcf_hdr_write(outfile_vcf, this->vcf_header) != 0) {
+        fprintf(stderr, "Error writing VCF header.\n");
+        bcf_close(outfile_vcf);
+        return;
     }
     
-    
-    std::vector<bcf1_t*> all_records;
-    std::vector<std::tuple<std::string, int, int, bcf1_t*>> records_with_pos; // chr, pos, rid, record      
-    for (size_t i = 0; i < num_processes; ++i) {
-        std::string cut_reads_file_chunk = this->output_path + "cut_reads_" + this->sampleName + "_"+ this->reads_type + "_" + std::to_string(i) + ".fasta";
-        std::ifstream infile_cutReads(cut_reads_file_chunk);
-        if (this->keep_cut_sequence){
-            if (!infile_cutReads.is_open()) {
-                spdlog::error("Failed to open file {}", cut_reads_file_chunk);
-                exit(1);
+    // Read records from temporary VCF file for sorting
+    std::vector<std::tuple<std::string, int, int, bcf1_t*>> records_with_pos; // chr, pos, rid, record
+    htsFile* temp_vcf_file = hts_open(temp_vcf.c_str(), "r");
+    if (temp_vcf_file != NULL) {
+        bcf_hdr_t *hdr = bcf_hdr_read(temp_vcf_file);
+        if (hdr) {
+            bcf1_t *rec = bcf_init();
+            while (bcf_read(temp_vcf_file, hdr, rec) == 0) {
+                bcf_unpack(rec, BCF_UN_ALL);
+                
+                // create a copy of the record
+                bcf1_t *rec_copy = bcf_dup(rec);
+                bcf_unpack(rec_copy, BCF_UN_ALL);
+                
+                // get the chromosome name
+                std::string chrom = bcf_hdr_id2name(hdr, rec_copy->rid);
+                // get the reference ID
+                int rid = rec_copy->rid;
+                
+                // add the record to the records with position
+                records_with_pos.emplace_back(chrom, rec_copy->pos, rid, rec_copy);
             }
-        } 
-  
-        std::string vcf_file_chunk = this->output_path + this->sampleName + "_" + this->reads_type + "_" + std::to_string(i) + ".vcf";
-        htsFile* infile_vcf = hts_open(vcf_file_chunk.c_str(), "r");
-        // open the VCF file
-        if (infile_vcf == NULL) {
-            spdlog::error("Failed to open file {}", vcf_file_chunk);
-            continue; // Skip this file but continue with others
+            bcf_destroy(rec);
+            bcf_hdr_destroy(hdr);
         }
-        
-        bcf_hdr_t *hdr = bcf_hdr_read(infile_vcf);
-        if (!hdr) {
-            spdlog::error("Error: Unable to read header of the VCF file {}", vcf_file_chunk);
-            hts_close(infile_vcf);
-            continue;
-        }
-        
-        // initialize the record
-        bcf1_t *rec = bcf_init();
-        // read the records from the VCF file
-        while (bcf_read(infile_vcf, hdr, rec) == 0) {
-            bcf_unpack(rec, BCF_UN_ALL);
-            
-            // create a copy of the record
-            bcf1_t *rec_copy = bcf_dup(rec);
-            bcf_unpack(rec_copy, BCF_UN_ALL);
-            
-            // get the chromosome name
-            std::string chrom = bcf_hdr_id2name(hdr, rec_copy->rid);
-            // get the reference ID
-            int rid = rec_copy->rid; // Reference ID for proper chromosome ordering
-            
-            // add the record to the records with position
-            records_with_pos.emplace_back(chrom, rec_copy->pos, rid, rec_copy);
-        }
-        
-        
-        bcf_destroy(rec);
-        bcf_hdr_destroy(hdr);
-        hts_close(infile_vcf);
-        
-        
-
-
-        // read the cut reads from the file
-        std::stringstream buffer;
-        buffer << infile_cutReads.rdbuf();
-        cut_reads_fasta += buffer.str();
-        // read the genotype result from the file
-        std::stringstream buffer2;
-        genotype_result += buffer2.str();
-        infile_cutReads.close();
-        // remove the cut reads file and the VCF file
-        std::remove(cut_reads_file_chunk.c_str());
-        std::remove(vcf_file_chunk.c_str());
-
+        hts_close(temp_vcf_file);
     }
+    
+    // Remove temporary file
+    std::remove(temp_vcf.c_str());
     // sort all records by chromosome and position
     std::sort(records_with_pos.begin(), records_with_pos.end(),
     [](const auto& a, const auto& b) {
@@ -1474,27 +1421,23 @@ void TandemTwister::processRegionsForLongReadsInput() {
         }
         bcf_destroy(rec);
     }
-    // gzip the vcf file
-    if (this->keep_cut_sequence){
-        this->outfile_cutReads << cut_reads_fasta;
+    // Write cut reads if requested
+    if (this->keep_cut_sequence) {
+        this->outfile_cutReads << all_cut_reads_fasta;
         this->outfile_cutReads.flush();
         this->outfile_cutReads.close();
     }
-    this->outfile << genotype_result;
+    
     this->outfile.flush();
-
     this->outfile.close();
-    // destroy the header
-    bcf_hdr_destroy(this->vcf_header);
-    // close the vcf file
+    
+    // Close the vcf file
     bcf_close(outfile_vcf);
-
-
-    // gzip the vcf file
+    
+    // Index the vcf file
     std::string vcf_file_index = this->output_file_vcf + ".tbi";
     if (bcf_index_build(this->output_file_vcf.c_str(), 0) != 0) {
         spdlog::error("Failed to index the vcf file {}", this->output_file_vcf);
-        exit(1);
     }
    
 }   

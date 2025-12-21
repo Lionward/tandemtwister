@@ -11,8 +11,8 @@ ifndef CONDA_PREFIX
 	HTSLIB_CHECK := $(shell if [ -e "/usr/local/lib/libhts.so" ]; then echo 1; else echo 0; fi)
 ifeq ($(HTSLIB_CHECK), 1)
 	# Use system htslib
-	CXXFLAGS=-std=c++20 -Wall -Wextra -Werror -O3 -g -mtune=native -I/usr/local/include 
-	LDFLAGS=-lhts -Wl,-rpath=/usr/local/lib -L/usr/local/lib
+CXXFLAGS=-std=c++20 -Wall -Wextra -Werror -O3 -g -mtune=native -I/usr/local/include 
+LDFLAGS=-lhts -Wl,-rpath=/usr/local/lib -L/usr/local/lib
 else
 	$(error CONDA_PREFIX not set and htslib library not found in system)
 endif
@@ -23,8 +23,8 @@ ifeq ($(HTSLIB_CHECK), 0)
 	$(error htslib library not found in CONDA_PREFIX)
 endif
 # Use Conda htslib
-	CXXFLAGS=-std=c++23  -funroll-loops -ftree-vectorize -fopenmp  -Wall -Wextra -Werror -O3 -g -mtune=native -Wno-unknown-pragmas -I${CONDA_PREFIX}/include 
-	LDFLAGS=-lhts -lfmt -Wl,-rpath=${CONDA_PREFIX}/lib -L${CONDA_PREFIX}/lib 
+CXXFLAGS=-std=c++23  -funroll-loops -ftree-vectorize -fopenmp  -Wall -Wextra -Werror -O3 -g -mtune=native -Wno-unknown-pragmas -I$(CONDA_PREFIX)/include 
+LDFLAGS=-lhts -lfmt -Wl,-rpath=$(CONDA_PREFIX)/lib -L$(CONDA_PREFIX)/lib 
 endif
 
 CXX=g++
