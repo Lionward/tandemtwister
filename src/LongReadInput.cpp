@@ -1271,6 +1271,11 @@ void TandemTwister::processRegionsForLongReadsInput() {
     std::mutex results_mutex;
     std::vector<vcfRecordInfoReads> all_genotype_records;
     std::string all_cut_reads_fasta = "";
+    
+    // Track peak memory usage across all threads
+    std::mutex memory_mutex;
+    double peak_rss = 0.0;
+    double peak_vm = 0.0;
 
     uint32_t num_threads = std::min(this->num_threads, static_cast<uint32_t>(this->TR_regions.size()));
     uint32_t num_of_regions = this->TR_regions.size() / num_threads;
@@ -1300,9 +1305,8 @@ void TandemTwister::processRegionsForLongReadsInput() {
                 all_cut_reads_fasta += cut_reads_fasta;
             }
             
-            // Measure and write memory stats
+            // Measure and update peak memory usage (thread-safe)
             {
-                double vm, rss;
                 unsigned long vsize;
                 long rss_val;
                 {
@@ -1313,17 +1317,17 @@ void TandemTwister::processRegionsForLongReadsInput() {
                             >> ignore >> ignore >> vsize >> rss_val;
                 }
                 long page_size_kb = sysconf(_SC_PAGE_SIZE) / 1024;
-                vm = vsize / 1024.0;
-                rss = rss_val * page_size_kb;
+                double vm = vsize / 1024.0;
+                double rss = rss_val * page_size_kb;
                 
-                std::string mem_file = this->output_path + "mem_stats_" + this->reads_type + "_" + std::to_string(thread_id) + ".txt";
-                std::ofstream mem_ofs(mem_file);
-                if (mem_ofs.is_open()) {
-                    mem_ofs << vm << " " << rss << std::endl;
-                    mem_ofs.close();
+                // Update peak memory usage thread-safely
+                {
+                    std::lock_guard<std::mutex> lock(memory_mutex);
+                    if (rss > peak_rss) peak_rss = rss;
+                    if (vm > peak_vm) peak_vm = vm;
                 }
             }
-            
+       
             // Close file handles
             hts_close(fp);
             bam_hdr_destroy(h);
@@ -1351,9 +1355,12 @@ void TandemTwister::processRegionsForLongReadsInput() {
         t.join();
     }
     
+    // Log peak memory usage if verbose
+    if (this->verbose >= 2 && peak_rss > 0) {
+        spdlog::info("Peak memory usage during processing - VM: {:.2f} GB, RSS: {:.2f} GB", 
+                     peak_vm / (1024 * 1024), peak_rss / (1024 * 1024));
+    }
 
-    // Write records to VCF and collect them for sorting
-    // We'll write to a temporary file first, then read and sort
     std::string temp_vcf = this->output_path + "temp_" + this->sampleName + "_" + this->reads_type + ".vcf";
     writeRecordsToVcf(all_genotype_records, temp_vcf);
     
