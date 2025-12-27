@@ -168,11 +168,11 @@ std::string styleLabel(const std::string& label) {
 }
 
 // Print version
-void printVersion() {
+void printVersion(const std::string& version) {
     printTitle("TandemTwister");
     const std::string indent = "  ";
     std::cerr << indent << styleLabel("Purpose") << ": A tool for genotyping tandem repeats from long reads and aligned genome input" << std::endl;
-    std::cerr << indent << styleLabel("Version") << ": 0.1.0" << std::endl;
+    std::cerr << indent << styleLabel("Version") << ": " << version << std::endl;
     std::cerr << indent << styleLabel("Author") << ": Lion Ward Al Raei" << std::endl;
     std::cerr << indent << styleLabel("Contact") << ": Lionward.alraei@gmail.com" << std::endl;
     std::cerr << indent << styleLabel("Institute") << ": Max Planck Institute for Molecular Genetics" << std::endl;
@@ -182,7 +182,7 @@ void printVersion() {
 // Print license notice
 void printLicenseNotice() {
     printSectionHeader("License & Warranty");
-    std::cerr << "  " << styleLabel("License") << ": BSD 3-Clause" << std::endl; 
+    std::cerr << "  " << styleLabel("License") << ": BSD 3-Clause Non-Commercial License" << std::endl; 
     std::cerr << "  " << styleLabel("Warranty") << ": Provided \"AS IS\" without warranty of any kind." << std::endl;
     std::cerr << "  " << styleLabel("Usage") << ": For research purposes only; not for diagnostic or clinical use." << std::endl;
 }
@@ -427,7 +427,7 @@ std::unordered_map<std::string, std::string> TandemTwister::parseCommandLine(int
     const bool hasVersion = args.find("--version") != args.end();
 
     if (hasVersion && command.empty()) {
-        printVersion();
+        printVersion(this->version);
         exit(0);
     }
 
@@ -445,7 +445,7 @@ std::unordered_map<std::string, std::string> TandemTwister::parseCommandLine(int
     args["command"] = command;
 
     if (hasVersion) {
-        printVersion();
+        printVersion(this->version);
         exit(0);
     }
 
@@ -476,7 +476,7 @@ void TandemTwister::printUsage(std::unordered_map<std::string, std::string> &arg
         else if (args.find("--assembly") != args.end()) command = "assembly";
     }
 
-    printVersion();
+    printVersion(this->version);
 
     if (command == "germline") {
         printSectionHeader("Germline Analysis");

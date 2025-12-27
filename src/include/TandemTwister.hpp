@@ -271,7 +271,7 @@ public:
     uint16_t minReadsInRegion = 2;
     uint16_t quality_score = 10;
     std::string analysis_type = "";
-    std::string version = "v2.0.1";
+    std::string version = "v0.2.0";
     std::string commandline ="";
     uint16_t verbose = 0;
     std::vector<float> motif_match_ratio = {0,1.,1.,1,0.55,0.5,0.65,0.55,0.625,0.65,0.5};
