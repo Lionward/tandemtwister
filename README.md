@@ -8,6 +8,13 @@
 <div align="center">
 
   <p>TandemTwister is a fast tool for tandem repeat genotyping!</p>
+  
+  <p>
+    <a href="https://anaconda.org/bioconda/tandemtwister">
+      <img src="https://img.shields.io/conda/vn/bioconda/tandemtwister?label=conda%20%7C%20bioconda&logo=anaconda" alt="Conda Version" />
+    </a>
+  </p>
+  
   <p>
     ·
     <a href="https://github.com/Lionward/TandemTwister/issues">Report Bug</a>
@@ -77,7 +84,19 @@ For comprehensive tandem repeat analyses, the following resources provide curate
 <!-- Installation -->
 ##  Installation
 
-Follow these steps to install **TandemTwister**.
+**TandemTwister** can be installed via conda/bioconda (recommended) or built from source.
+
+### Option 1: Install via Conda/Bioconda (Recommended)
+
+The easiest way to install TandemTwister is through conda/bioconda:
+
+```bash
+mamba install bioconda::tandemtwister
+```
+
+### Option 2: Build from Source
+
+Follow these steps to build **TandemTwister** from source.
 
 ### 1. Clone the repository
 ```bash
