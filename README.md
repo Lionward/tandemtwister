@@ -175,6 +175,7 @@ Run `tandemtwister` from an activated environment using the command-first interf
       <li><code>-sn, --sample</code> &nbsp; Name of the sample.</li>
       <li><code>-rt, --reads_type</code> &nbsp; Type of reads (Default: CCS).</li>
       <li><code>-bt, --bam_type</code> &nbsp; Type of BAM file (e.g., reads or assembly).</li>
+       <li><code>-t, --threads</code>: Number of threads to use (Default: 1)</li>
     </ul>
   </li>
 </ol>
@@ -199,11 +200,7 @@ Run `tandemtwister` from an activated environment using the command-first interf
 
 #### Read Extraction Parameters
 <ul>
-  <li><code>-h, --help</code>: Show help message</li>
-  <li><code>-s, --output_file_statistics</code>: Output file containing phasing info &amp; consensus CN call for each region</li>
   <li><code>-pad, --padding</code>: Padding around the STR region to extract reads (Default: 0)</li>
-  <li><code>-t, --threads</code>: Number of threads to use (Default: 1)</li>
-  <li><code>-kpr, --keepPhasingResults</code>: Keep phasing results (Default: false)</li>
   <li><code>-kcr, --keepCutReads</code>: Keep cut reads (Default: false)</li>
   <li><code>-minR, --minReadsInRegion</code>: Minimum number of reads that should span the region (Default: 2)</li>
   <li><code>-btg, --bamIsTagged</code>: Reads in BAM are phased (Default: false)</li>
