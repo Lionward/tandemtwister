@@ -345,12 +345,10 @@ We welcome contributions from the community! If you find any issues or have sugg
 
 If you use TandemTwister in your research or analysis, please cite our work as follows:
 
-> **TandemTwister: A fast accurate tool for genotyping tandem repeats**  
-> Al Raei L, Ghareghani M 
-> [GitHub Repository](https://github.com/Lionward/tandemtwister)  
-> (Manuscript in preparation)
-
-Once our manuscript is published, we will update this section with the official citation.
+> **TandemTwister: Scalable genotyping and advanced visualization of tandem repeats**  
+> Al Raei LW, Ghareghani M, Moeinzadeh H, Vingron M  
+> bioRxiv 2026.01.28.702315; doi: [https://doi.org/10.64898/2026.01.28.702315](https://doi.org/10.64898/2026.01.28.702315)  
+> [Preprint](https://www.biorxiv.org/content/10.64898/2026.01.28.702315v1) | [GitHub Repository](https://github.com/Lionward/tandemtwister)
 
 Thank you for acknowledging TandemTwister in your work!
 
